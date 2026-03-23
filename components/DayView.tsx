@@ -269,7 +269,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
         if (reminderDate && taskId) {
             if (reminderDate > new Date()) {
                 const notifId = await schedulePushNotification(
-                    `Unutma: ${finalTaskText}`,
+                    `Remi: ${finalTaskText}`,
                     'Görevin tamamlanmayı bekliyor! 🚀',
                     reminderDate
                 );
@@ -555,7 +555,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                         onPress={() => setIsInputFocused(true)}
                     >
                         <Ionicons name="add-circle" size={22} color={C.primary} />
-                        <Text style={[styles.inputPlaceholderText, { color: C.primary }]}>Unutmadan yaz...</Text>
+                        <Text style={[styles.inputPlaceholderText, { color: C.primary }]}>Remi'ye yaz...</Text>
                     </Pressable>
                 ) : (
                     <View style={[
@@ -567,7 +567,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                     ]}>
                         <TextInput
                             style={[styles.input, { color: C.textLight }]}
-                            placeholder="Unutmadan yaz..."
+                            placeholder="Remi'ye yaz..."
                             placeholderTextColor={C.textMuted + '80'}
                             value={newTaskText}
                             onChangeText={setNewTaskText}

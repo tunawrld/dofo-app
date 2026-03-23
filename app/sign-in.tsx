@@ -143,7 +143,7 @@ export default function SignInScreen() {
         try {
             const { createdSessionId, signIn, signUp } = await startSSOFlow({
                 strategy,
-                redirectUrl: Linking.createURL('/oauth-native-callback', { scheme: 'unutmaapp' }),
+                redirectUrl: Linking.createURL('/oauth-native-callback', { scheme: 'remiapp' }),
             });
 
             if (createdSessionId) {
@@ -188,7 +188,7 @@ export default function SignInScreen() {
             <View style={styles.inner}>
                 {/* Header */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.appName}>unutma</Text>
+                    <Text style={styles.appName}>remi</Text>
                     <Text style={styles.subtitle}>Hesabına giriş yap</Text>
                 </View>
 

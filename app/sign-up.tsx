@@ -226,7 +226,7 @@ export default function SignUpScreen() {
         try {
             const { createdSessionId, signIn, signUp } = await startSSOFlow({
                 strategy,
-                redirectUrl: Linking.createURL('/oauth-native-callback', { scheme: 'unutmaapp' }),
+                redirectUrl: Linking.createURL('/oauth-native-callback', { scheme: 'remiapp' }),
             });
 
             if (createdSessionId) {
@@ -364,7 +364,7 @@ export default function SignUpScreen() {
             <View style={styles.inner}>
                 {/* Header */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.appName}>unutma</Text>
+                    <Text style={styles.appName}>remi</Text>
                     <Text style={styles.subtitle}>Yeni hesap oluştur</Text>
                 </View>
 

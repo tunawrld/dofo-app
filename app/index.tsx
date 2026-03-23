@@ -1,4 +1,5 @@
 import ComboOverlay from '@/components/ComboOverlay';
+import TimeTravelHint from '@/components/TimeTravelHint';
 import DailyQuote from '@/components/DailyQuote';
 import DayView from '@/components/DayView';
 import FirstTaskOverlay from '@/components/FirstTaskOverlay';
@@ -233,7 +234,7 @@ export default function HomeScreen() {
 
                     if (isFuture) {
                         const id = await schedulePushNotification(
-                            `Unutma: ${taskText}`,
+                            `Remi: ${taskText}`,
                             'Görevin tamamlanmayı bekliyor! 🚀',
                             reminderDate
                         );
@@ -249,7 +250,7 @@ export default function HomeScreen() {
                     // Date didn't change, but text did, and it's a future reminder -> update notification content
                     await cancelNotification(task.reminderId);
                     const id = await schedulePushNotification(
-                        `Unutma: ${taskText}`,
+                        `Remi: ${taskText}`,
                         'Görevin tamamlanmayı bekliyor! 🚀',
                         reminderDate
                     );
@@ -299,7 +300,7 @@ export default function HomeScreen() {
 
                     if (newReminderDate > new Date()) {
                         const newNotifId = await schedulePushNotification(
-                            `Unutma: ${task.text}`,
+                            `Remi: ${task.text}`,
                             'Görevin tamamlanmayı bekliyor! 🚀',
                             newReminderDate
                         );
@@ -452,6 +453,8 @@ export default function HomeScreen() {
                     )
                 )}
             </SafeAreaView>
+
+            <TimeTravelHint pagerRef={pagerRef} currentPage={activePage} />
 
             <DailyQuote />
 
