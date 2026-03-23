@@ -41,8 +41,10 @@ function AuthRoutingGuard() {
                         avatar_url: user.imageUrl || null,
                     });
                 }
-            } catch (error) {
-                console.error("Error syncing profile to supabase:", error);
+            } catch (error: any) {
+                // Ağ bağlantısı arka planda koptuğunda (clerk_offline) ekrana kocaman kırmızı uyarı 
+                // çıkartmaması için error yerine log/warn kullanıyoruz.
+                console.log("Supabase profil eşitleme atlandı:", error?.message || error);
             }
         };
         syncUser();

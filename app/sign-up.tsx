@@ -275,9 +275,13 @@ export default function SignUpScreen() {
     }
     */
 
-    // Signed in or complete — render nothing
+    // Signed in or complete — render loading while router navigates to home
     if (signUp?.status === 'complete' || isSignedIn) {
-        return null;
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
     }
 
     // Doğrulama aşaması

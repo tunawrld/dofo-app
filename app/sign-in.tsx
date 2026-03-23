@@ -95,6 +95,18 @@ export default function SignInScreen() {
         setIsSigningIn(true);
 
         try {
+            // Eğer daha önceden arka planda signIn statüsü 'complete' olmuşsa ama setActive çağrılmadıysa,
+            // tekrardan signIn.create yapmaya çalışınca hata döndürür. Önce bu durumu kontrol edelim.
+            if (signIn.status === 'complete') {
+                if (signIn.createdSessionId) {
+                    await setActive({ session: signIn.createdSessionId });
+                } else {
+                    setSignInError('Halihazırda açık bir oturum bulundu. Yönlendiriliyor...');
+                    setTimeout(() => router.replace('/'), 1200);
+                }
+                return;
+            }
+
             const result: any = await signIn.create({
                 identifier: email.trim(),
                 password: password,
@@ -105,9 +117,18 @@ export default function SignInScreen() {
                 return;
             }
 
-                // @ts-ignore
-                await setActive({ session: result.createdSessionId });
-                // router.replace('/'); is now handled by AuthRoutingGuard
+            if (result.status === 'complete') {
+                if (result.createdSessionId) {
+                    await setActive({ session: result.createdSessionId });
+                } else {
+                    console.warn("Session complete but createdSessionId is null. User likely already logged in.");
+                    setSignInError('Tarayıcınızda halihazırda açık bir oturum tespit edildi. Yönlendiriliyorsunuz...');
+                    setTimeout(() => router.replace('/'), 1200);
+                }
+            } else {
+                console.log("Incomplete sign in:", result);
+                setSignInError('Hesaba giriş tamamlanamadı. Durum: ' + result.status + ' (Cihaz önbelleğini temizlemeniz gerekebilir.)');
+            }
         } catch (err: any) {
             console.error('Sign in error:', err.errors || err.message || err);
             let msg = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || 'Giriş başarısız oldu.';
