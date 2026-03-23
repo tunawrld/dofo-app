@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scopedStorage } from './scopedStorage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
@@ -113,7 +113,11 @@ export const useTaskStore = create<TaskState>()(
         }),
         {
             name: 'unutma-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => scopedStorage),
+            merge: (persistedState: any, currentState: any) => {
+                if (!persistedState) return { ...currentState, tasks: [], lastDeletedTask: null };
+                return { ...currentState, ...persistedState };
+            }
         }
     )
 );

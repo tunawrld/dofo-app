@@ -5,13 +5,18 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
 import WelcomeScreen from '@/components/WelcomeScreen';
+import SyncLoader from '@/components/SyncLoader';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { tokenCache } from '@/lib/tokenCache';
 import { registerForPushNotificationsAsync } from '@/utils/notifications';
+import { useUserStore } from '@/store/userStore';
+import { rehydrateAllStores } from '@/store/rehydrate';
+import { setClerkTokenGetter } from '@/store/supabaseSync';
 
 const CLERK_PUBLISHABLE_KEY = "pk_test_d2hvbGUtc2hpbmVyLTI2LmNsZXJrLmFjY291bnRzLmRldiQ";
 console.log("--- DEBUG: Clerk Config (HARDCODED) ---");
@@ -24,41 +29,56 @@ function AuthRoutingGuard() {
   const segments = useSegments();
   const router = useRouter();
   const hasSyncedUser = React.useRef(false);
+  const setUserId = useUserStore((state) => state.setUserId);
+  const currentUserId = useUserStore((state) => state.userId);
+
+  useEffect(() => {
+    setClerkTokenGetter(() => getToken({ template: 'supabase' }));
+  }, [getToken]);
 
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (isSignedIn && user && !hasSyncedUser.current) {
-        hasSyncedUser.current = true;
-        const syncUser = async () => {
-            try {
-                const token = await getToken({ template: 'supabase' });
-                if (token) {
-                    await upsertProfile(token, {
-                        id: user.id,
-                        email: user.emailAddresses[0]?.emailAddress || null,
-                        full_name: user.fullName || user.firstName || null,
-                        avatar_url: user.imageUrl || null,
-                    });
+    if (isSignedIn && user) {
+        if (currentUserId !== user.id) {
+            setUserId(user.id);
+            rehydrateAllStores();
+        }
+
+        if (!hasSyncedUser.current) {
+            hasSyncedUser.current = true;
+            const syncUser = async () => {
+                try {
+                    const token = await getToken({ template: 'supabase' });
+                    if (token) {
+                        await upsertProfile(token, {
+                            id: user.id,
+                            email: user.emailAddresses[0]?.emailAddress || null,
+                            full_name: user.fullName || user.firstName || null,
+                            avatar_url: user.imageUrl || null,
+                        });
+                    }
+                } catch (error: any) {
+                    console.log("Supabase profil eşitleme atlandı:", error?.message || error);
                 }
-            } catch (error: any) {
-                // Ağ bağlantısı arka planda koptuğunda (clerk_offline) ekrana kocaman kırmızı uyarı 
-                // çıkartmaması için error yerine log/warn kullanıyoruz.
-                console.log("Supabase profil eşitleme atlandı:", error?.message || error);
-            }
-        };
-        syncUser();
+            };
+            syncUser();
+        }
     }
 
     const inAuthGroup = segments[0] === 'sign-in' || segments[0] === 'sign-up';
 
     if (!isSignedIn && !inAuthGroup) {
       hasSyncedUser.current = false;
+      if (currentUserId !== null) {
+          setUserId(null);
+          rehydrateAllStores();
+      }
       router.replace('/sign-in');
     } else if (isSignedIn && inAuthGroup) {
       router.replace('/');
     }
-  }, [isSignedIn, isLoaded, segments, user]);
+  }, [isSignedIn, isLoaded, segments, user, currentUserId]);
 
   return null;
 }
@@ -66,6 +86,7 @@ function AuthRoutingGuard() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
+  const isSyncing = useUserStore((state) => state.isSyncing);
 
   useEffect(() => {
     registerForPushNotificationsAsync();
@@ -109,6 +130,8 @@ export default function RootLayout() {
           </Stack>
 
           {isFirstLaunch && <WelcomeScreen onStart={handleWelcomeComplete} />}
+
+          <SyncLoader isVisible={isSyncing} />
 
           <StatusBar style="auto" />
         </ThemeProvider>

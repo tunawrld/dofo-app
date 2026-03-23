@@ -96,7 +96,6 @@ export default function SignInScreen() {
 
         try {
             // Eğer daha önceden arka planda signIn statüsü 'complete' olmuşsa ama setActive çağrılmadıysa,
-            // tekrardan signIn.create yapmaya çalışınca hata döndürür. Önce bu durumu kontrol edelim.
             if (signIn.status === 'complete') {
                 if (signIn.createdSessionId) {
                     await setActive({ session: signIn.createdSessionId });
@@ -107,33 +106,31 @@ export default function SignInScreen() {
                 return;
             }
 
-            const result: any = await signIn.create({
+            await signIn.create({
                 identifier: email.trim(),
                 password: password,
             });
 
-            if (result?.error) {
-                Alert.alert('Hata', result.error.message || 'Giriş işlemi başarısız.');
-                return;
-            }
-
-            if (result.status === 'complete') {
-                if (result.createdSessionId) {
-                    await setActive({ session: result.createdSessionId });
+            if (signIn.status === 'complete') {
+                if (signIn.createdSessionId) {
+                    await setActive({ session: signIn.createdSessionId });
                 } else {
-                    console.warn("Session complete but createdSessionId is null. User likely already logged in.");
+                    console.warn("Session complete but createdSessionId is null.");
                     setSignInError('Tarayıcınızda halihazırda açık bir oturum tespit edildi. Yönlendiriliyorsunuz...');
                     setTimeout(() => router.replace('/'), 1200);
                 }
             } else {
-                console.log("Incomplete sign in:", result);
-                setSignInError('Hesaba giriş tamamlanamadı. Durum: ' + result.status + ' (Cihaz önbelleğini temizlemeniz gerekebilir.)');
+                setSignInError('Hesaba giriş tamamlanamadı. Eksik doğrulama adımı: ' + (signIn.status || 'Bilinmiyor'));
             }
         } catch (err: any) {
-            console.error('Sign in error:', err.errors || err.message || err);
+            console.log('Sign in error:', err.errors || err.message || err);
             let msg = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || 'Giriş başarısız oldu.';
             if (typeof msg !== 'string') {
                 try { msg = JSON.stringify(msg); } catch (e) { msg = 'Giriş başarısız oldu.'; }
+            }
+            // Çevrimdışı olma durumunda sıkça alınan Clerk hata metni
+            if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('offline')) {
+                msg = 'Ağ bağlantısı koptu. Lütfen internetinizi kontrol edin.';
             }
             setSignInError(msg);
         } finally {
@@ -154,23 +151,17 @@ export default function SignInScreen() {
                     session: createdSessionId,
                 });
             } else {
-                // Eger session yaratilamadiysa, kullanicinin baska bir adimi tamamlamasi gerekebilir (ornegin MFA)
-                // signUp veya signIn objeleri uzerinden status kontrolu yapabiliriz.
-                if (signIn?.firstFactorVerification.status === 'transferable') {
-                    // Cok nadir gorulen bir durum, genellikle signUp.status === "missing_requirements" firlatir.
-                }
                 if (signUp?.status === 'missing_requirements') {
-                    // Kayit aninda eksik olan bilgileri almak icin yonlendirme gerekebilir. 
-                    // Yakin zamanda Clerk bunlari otomatik tamamlatiyor.
                     console.warn('OAuth signUp missing requirements:', signUp.missingFields);
                 }
             }
-        } catch (err) {
-            console.error('OAuth error:', JSON.stringify(err, null, 2));
+        } catch (err: any) {
+            // Sadece konsol warn'a dusurerek "OAuth error: {" loglamasi ve Expo hata toastını engelliyoruz
+            console.warn('OAuth login stopped or failed:', err?.message || err);
         } finally {
             setOauthLoading(null);
         }
-    }, [startSSOFlow, router]);
+    }, [startSSOFlow, router, setActive]);
 
     const styles = makeStyles(colors);
 

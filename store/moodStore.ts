@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scopedStorage } from './scopedStorage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { MoodEntry, MoodType } from '../types';
@@ -31,7 +31,7 @@ export const useMoodStore = create<MoodState>()(
         }),
         {
             name: 'mood-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => scopedStorage),
         }
     )
 );

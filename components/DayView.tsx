@@ -41,6 +41,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
     const insets = useSafeAreaInsets();
 
     const [showOverdueModal, setShowOverdueModal] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const handleToggleTask = useCallback(async (id: string) => {
         const task = tasks.find(t => t.id === id);
@@ -389,7 +390,13 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
-            <View style={styles.titleSection}>
+            {isMenuOpen && (
+                <Pressable 
+                    style={[StyleSheet.absoluteFill, { zIndex: 9 }]} 
+                    onPress={() => setIsMenuOpen(false)} 
+                />
+            )}
+            <View style={[styles.titleSection, { zIndex: 10 }]}>
                 {showGoToToday && (
                     <Pressable
                         style={[styles.goToTodayButton, { flexDirection: isPast ? 'row-reverse' : 'row' }]}
@@ -407,44 +414,76 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                 <Text style={[styles.title, { color: C.textLight }]}>{headerTitle}</Text>
                 <Text style={[styles.dateText, { color: C.textMuted }]}>{dateDisplay}</Text>
 
-                <View style={{ position: 'absolute', right: 24, top: 23, zIndex: 10, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                <View style={{ position: 'absolute', right: 24, top: 23, zIndex: 10, alignItems: 'flex-end' }}>
                     <Pressable
                         onPress={() => {
                             Haptics.selectionAsync();
-                            onOpenProfile?.();
+                            setIsMenuOpen(!isMenuOpen);
                         }}
                         hitSlop={12}
-                        style={{ marginRight: -4 }}
                     >
-                        <Ionicons name="person-circle-outline" size={24} color={C.textLight} />
+                        <Ionicons name={isMenuOpen ? "close" : "menu"} size={28} color={C.textLight} />
                     </Pressable>
 
-                    <Pressable
-                        onPress={() => {
-                            Haptics.selectionAsync();
-                            onOpenNotes?.();
-                        }}
-                        hitSlop={12}
-                        style={{ marginRight: -4 }}
-                    >
-                        <Ionicons name="document-text-outline" size={24} color={C.textLight} />
-                    </Pressable>
+                    {isMenuOpen && (
+                        <View style={{
+                            marginTop: 8,
+                            backgroundColor: C.cardBg,
+                            borderRadius: 20,
+                            padding: 8,
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 8 },
+                            shadowOpacity: 0.15,
+                            shadowRadius: 20,
+                            elevation: 8,
+                            borderWidth: 1,
+                            borderColor: C.border + '15',
+                            minWidth: 200,
+                        }}>
+                            <Pressable 
+                                onPress={() => { setIsMenuOpen(false); onOpenProfile?.(); }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
+                            >
+                                <Ionicons name="person-circle-outline" size={24} color={C.textLight} />
+                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>Profil</Text>
+                            </Pressable>
 
-                    {overdueTasks.length > 0 && (
-                        <Pressable
-                            onPress={() => {
-                                Haptics.selectionAsync();
-                                setShowOverdueModal(true);
-                            }}
-                            hitSlop={12}
-                        >
-                            <Ionicons name="time-outline" size={24} color={C.textLight} />
-                        </Pressable>
+                            <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
+
+                            <Pressable 
+                                onPress={() => { setIsMenuOpen(false); onOpenCalendar?.(); }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
+                            >
+                                <Ionicons name="calendar-outline" size={24} color={C.textLight} />
+                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>Takvim</Text>
+                            </Pressable>
+
+                            <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
+
+                            <Pressable 
+                                onPress={() => { setIsMenuOpen(false); onOpenNotes?.(); }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.primary + '20' : C.primary + '10', marginVertical: 2 })}
+                            >
+                                <Ionicons name="document-text" size={24} color={C.primary} />
+                                <Text style={{ fontSize: 16, fontWeight: '600', color: C.primary }}>Kalıcı Notlar</Text>
+                            </Pressable>
+
+                            {overdueTasks.length > 0 && (
+                                <>
+                                    <View style={{ height: 1, backgroundColor: C.border + '10', marginHorizontal: 8, marginVertical: 6 }} />
+                                    <Pressable 
+                                        onPress={() => { setIsMenuOpen(false); setShowOverdueModal(true); }} 
+                                        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.red + '15' : 'transparent' })}
+                                    >
+                                        <Ionicons name="time" size={24} color={C.red || '#FF3B30'} />
+                                        <Text style={{ fontSize: 16, fontWeight: '600', color: C.red || '#FF3B30' }}>
+                                            Gecikenler <Text style={{ fontSize: 14, fontWeight: 'bold' }}>({overdueTasks.length})</Text>
+                                        </Text>
+                                    </Pressable>
+                                </>
+                            )}
+                        </View>
                     )}
-
-                    <Pressable onPress={onOpenCalendar} hitSlop={12}>
-                        <Ionicons name="calendar-outline" size={24} color={C.textLight} />
-                    </Pressable>
                 </View>
             </View>
 

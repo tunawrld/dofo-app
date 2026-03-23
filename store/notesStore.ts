@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scopedStorage } from './scopedStorage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -15,7 +15,11 @@ export const useNotesStore = create<PermanentNotesState>()(
         }),
         {
             name: 'unutma-permanent-notes',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => scopedStorage),
+            merge: (persistedState: any, currentState: any) => {
+                if (!persistedState) return { ...currentState, note: '' };
+                return { ...currentState, ...persistedState };
+            }
         }
     )
 );

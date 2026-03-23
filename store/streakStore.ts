@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scopedStorage } from './scopedStorage';
 import { differenceInCalendarDays, format, parseISO } from 'date-fns';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
@@ -113,7 +113,7 @@ export const useStreakStore = create<StreakState>()(
         }),
         {
             name: 'streak-storage',
-            storage: createJSONStorage(() => AsyncStorage),
+            storage: createJSONStorage(() => scopedStorage),
         }
     )
 );
