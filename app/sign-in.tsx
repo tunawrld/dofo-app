@@ -1,5 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { useSignIn, useSSO } from '@clerk/expo';
+import { useSignIn, useSSO, useClerk } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { Link, useRouter, type Href } from 'expo-router';
@@ -7,6 +7,7 @@ import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
@@ -69,7 +70,8 @@ function GoogleLogo({ size = 20 }: { size?: number }) {
 export default function SignInScreen() {
     useWarmUpBrowser();
 
-    const { signIn, errors, fetchStatus } = useSignIn();
+    const { signIn } = useSignIn() as any;
+    const { setActive } = useClerk();
     const { startSSOFlow } = useSSO();
     const router = useRouter();
     const colors = useThemeColors();
@@ -79,53 +81,56 @@ export default function SignInScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [oauthLoading, setOauthLoading] = useState<'apple' | 'google' | null>(null);
 
-    const loading = fetchStatus === 'fetching';
+    const [isSigningIn, setIsSigningIn] = useState(false);
+    const loading = isSigningIn || oauthLoading !== null;
+    const [signInError, setSignInError] = useState('');
 
     const onSignIn = async () => {
-        if (!email.trim() || !password.trim()) return;
-
-        const { error } = await signIn.password({
-            emailAddress: email.trim(),
-            password: password,
-        });
-
-        if (error) {
-            console.error('Sign in error:', JSON.stringify(error, null, 2));
+        if (!signIn) {
+            Alert.alert('Hata', 'Clerk Sign-In objesi yüklenmedi.');
             return;
         }
+        if (!email.trim() || !password.trim()) return;
 
-        if (signIn.status === 'complete') {
-            await signIn.finalize({
-                navigate: ({ session, decorateUrl }) => {
-                    const url = decorateUrl('/');
-                    if (typeof url === 'string' && url.startsWith('http')) {
-                        // web
-                    } else {
-                        router.replace(url as Href);
-                    }
-                },
+        setIsSigningIn(true);
+
+        try {
+            const result: any = await signIn.create({
+                identifier: email.trim(),
+                password: password,
             });
+
+            if (result?.error) {
+                Alert.alert('Hata', result.error.message || 'Giriş işlemi başarısız.');
+                return;
+            }
+
+                // @ts-ignore
+                await setActive({ session: result.createdSessionId });
+                // router.replace('/'); is now handled by AuthRoutingGuard
+        } catch (err: any) {
+            console.error('Sign in error:', err.errors || err.message || err);
+            let msg = err?.errors?.[0]?.longMessage || err?.errors?.[0]?.message || err?.message || 'Giriş başarısız oldu.';
+            if (typeof msg !== 'string') {
+                try { msg = JSON.stringify(msg); } catch (e) { msg = 'Giriş başarısız oldu.'; }
+            }
+            setSignInError(msg);
+        } finally {
+            setIsSigningIn(false);
         }
     };
 
     const onOAuthPress = useCallback(async (strategy: 'oauth_apple' | 'oauth_google') => {
         setOauthLoading(strategy === 'oauth_apple' ? 'apple' : 'google');
         try {
-            const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+            const { createdSessionId, signIn, signUp } = await startSSOFlow({
                 strategy,
                 redirectUrl: Linking.createURL('/oauth-native-callback', { scheme: 'unutmaapp' }),
             });
 
             if (createdSessionId) {
-                setActive!({
+                await setActive({
                     session: createdSessionId,
-                    navigate: async ({ session, decorateUrl }) => {
-                        if (session?.currentTask) {
-                            console.log(session?.currentTask);
-                            return;
-                        }
-                        router.replace(decorateUrl('/') as Href);
-                    },
                 });
             } else {
                 // Eger session yaratilamadiysa, kullanicinin baska bir adimi tamamlamasi gerekebilir (ornegin MFA)
@@ -147,6 +152,21 @@ export default function SignInScreen() {
     }, [startSSOFlow, router]);
 
     const styles = makeStyles(colors);
+
+    // Clerk durumunu izleyelim
+    useEffect(() => {
+        console.log("--- SIGN-IN STATUS ---", { signIn: signIn?.status });
+    }, [signIn?.status]);
+
+    /*
+    if (!isLoaded) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
+    }
+    */
 
     return (
         <KeyboardAvoidingView
@@ -218,9 +238,9 @@ export default function SignInScreen() {
                         />
                     </View>
 
-                    {errors?.fields?.identifier && (
-                        <Text style={styles.errorText}>{errors.fields.identifier.message}</Text>
-                    )}
+                    {signInError ? (
+                        <Text style={styles.errorText}>{signInError}</Text>
+                    ) : null}
 
                     <View style={styles.inputContainer}>
                         <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
@@ -243,9 +263,7 @@ export default function SignInScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {errors?.fields?.password && (
-                        <Text style={styles.errorText}>{errors.fields.password.message}</Text>
-                    )}
+
 
                     <TouchableOpacity
                         style={[styles.signInButton, (loading || !email || !password) && styles.signInButtonDisabled]}

@@ -1,5 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { useAuth, useSignUp, useSSO } from '@clerk/expo';
+import { useAuth, useSignUp, useSSO, useClerk } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import { Link, useRouter, type Href } from 'expo-router';
@@ -14,6 +14,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Alert,
 } from 'react-native';
 import { Path, Svg } from 'react-native-svg';
 
@@ -69,8 +70,9 @@ function GoogleLogo({ size = 20 }: { size?: number }) {
 export default function SignUpScreen() {
     useWarmUpBrowser();
 
-    const { signUp, errors, fetchStatus } = useSignUp();
-    const { isSignedIn } = useAuth();
+    const { signUp } = useSignUp() as any;
+    const { setActive } = useClerk();
+    const { isLoaded, isSignedIn } = useAuth();
     const { startSSOFlow } = useSSO();
     const router = useRouter();
     const colors = useThemeColors();
@@ -81,67 +83,156 @@ export default function SignUpScreen() {
     const [code, setCode] = useState('');
     const [oauthLoading, setOauthLoading] = useState<'apple' | 'google' | null>(null);
 
-    const loading = fetchStatus === 'fetching';
+    const [pendingVerification, setPendingVerification] = useState(false);
+
+    const [codeError, setCodeError] = useState('');
+    const [signupError, setSignupError] = useState('');
+    const [isSigningUp, setIsSigningUp] = useState(false);
+    const loading = isSigningUp || oauthLoading !== null;
 
     const onSignUp = async () => {
-        if (!email.trim() || !password.trim()) return;
-
-        const { error } = await signUp.password({
-            emailAddress: email.trim(),
-            password: password,
-        });
-
-        if (error) {
-            console.error('Sign up error:', JSON.stringify(error, null, 2));
+        if (!signUp) {
+            Alert.alert('Hata', 'Clerk Sign-Up objesi yüklenmedi.');
+            return;
+        }
+        if (!email.trim() || !password.trim()) {
+            Alert.alert('Uyarı', 'Lütfen e-posta ve şifrenizi girin.');
             return;
         }
 
-        if (!error) {
-            await signUp.verifications.sendEmailCode();
+        setIsSigningUp(true);
+        setSignupError('');
+
+        try {
+            // Clerk objesinin versiyonuna göre create çağrısı (Bazen obje döndürür, bazen hata fırlatır)
+            const createRes: any = await signUp.create({
+                emailAddress: email.trim(),
+                password: password,
+            });
+
+            // Eğer versiyonda hata objesi dönüyorsa fırlat
+            if (createRes && createRes.error) {
+                throw createRes.error;
+            }
+
+            // GÜNCEL CLERK VERSİYONLARINA (v4 / v5 / Beta) UYUMLU DOĞRULAMA KODU GÖNDERİMİ
+            if (typeof signUp.prepareVerification === 'function') {
+                await signUp.prepareVerification({ strategy: 'email_code' });
+            } else if (typeof signUp.prepareEmailAddressVerification === 'function') {
+                await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+            } else if (typeof signUp.sendEmailCode === 'function') {
+                const res: any = await signUp.sendEmailCode();
+                if (res && res.error) throw res.error;
+            } else {
+                throw new Error('Geçerli bir doğrulama fonksiyonu bulunamadı.');
+            }
+
+            setPendingVerification(true);
+        } catch (error: any) {
+            console.error('Sign up error:', error);
+            
+            let msg = error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message || error?.message || 'Bilinmeyen bir hata oluştu.';
+            
+            if (typeof msg !== 'string') {
+                try { msg = JSON.stringify(msg); } catch (e) { msg = 'Bilinmeyen bir hata oluştu.'; }
+            }
+
+            // İngilizce Clerk hatalarını Türkçeye çevirme
+            const lowerMsg = msg.toLowerCase();
+            if (lowerMsg.includes('password is too short') || lowerMsg.includes('8 character')) {
+                msg = 'Şifreniz çok kısa. Lütfen en az 8 karakter uzunluğunda bir şifre girin.';
+            } else if (lowerMsg.includes('has been taken') || lowerMsg.includes('already exists') || lowerMsg.includes('is taken')) {
+                msg = 'Bu e-posta adresi zaten kullanılıyor. Lütfen giriş yapın veya farklı bir adres deneyin.';
+            } else if (lowerMsg.includes('invalid email') || lowerMsg.includes('invalid_email_address')) {
+                msg = 'Geçersiz bir e-posta adresi girdiniz. Lütfen kontrol edip tekrar deneyin.';
+            } else if (lowerMsg.includes('already have an active sign up') || lowerMsg.includes('sign up is already in progress')) {
+                msg = 'Daha önceden başlatılmış ve tamamlanmamış bir kayıt işleminiz var. Farklı bir mail deniyor olabilirsiniz, uygulamayı yeniden başlatmanız gerekebilir.';
+            }
+
+            setSignupError(msg);
+            
+            if (lowerMsg.includes('captcha')) {
+                const captchaMsg = 'Güvenlik doğrulaması (CAPTCHA) hatası. Lütfen Clerk Dashboard\'dan Bot Detection ayarını kapatın veya CAPTCHA entegrasyonunu tamamlayın.';
+                setSignupError(captchaMsg);
+                Alert.alert('Kayıt Hatası', captchaMsg);
+            } else {
+                Alert.alert('Kayıt Hatası', msg);
+            }
+        } finally {
+            setIsSigningUp(false);
         }
     };
 
     const onVerify = async () => {
-        if (!code.trim()) return;
+        if (!isLoaded || !code.trim()) return;
 
-        await signUp.verifications.verifyEmailCode({
-            code: code.trim(),
-        });
+        setIsSigningUp(true);
+        setCodeError('');
+        try {
+            let completeSignUp: any;
+            
+            // GÜNCEL VERSİYONLARA GÖRE DİNAMİK DOĞRULAMA EŞLEŞMESİ
+            if (typeof signUp.attemptVerification === 'function') {
+                completeSignUp = await signUp.attemptVerification({ strategy: 'email_code', code: code.trim() });
+            } else if (typeof signUp.attemptEmailAddressVerification === 'function') {
+                completeSignUp = await signUp.attemptEmailAddressVerification({ code: code.trim() });
+            } else if (typeof signUp.verifyEmailCode === 'function') {
+                const res: any = await signUp.verifyEmailCode({ code: code.trim() });
+                if (res && res.error) throw res.error;
+                completeSignUp = signUp; // Bu senaryoda signUp objesinin kendisi güncellenir
+            } else {
+                throw new Error('Geçerli bir doğrulama tamamlama fonksiyonu bulunamadı.');
+            }
 
-        if (signUp.status === 'complete') {
-            await signUp.finalize({
-                navigate: ({ session, decorateUrl }) => {
-                    const url = decorateUrl('/');
-                    if (typeof url === 'string' && url.startsWith('http')) {
-                        // web
-                    } else {
-                        router.replace(url as Href);
-                    }
-                },
-            });
-        } else {
-            console.error('Sign-up not complete:', signUp);
+            if (completeSignUp?.status === 'complete') {
+                await setActive({ session: completeSignUp.createdSessionId });
+                // AuthRoutingGuard will automatically handle the navigation to '/'!
+            } else if (completeSignUp?.status === 'missing_requirements') {
+                console.error('Missing requirements:', completeSignUp.missingFields);
+                setCodeError(`Dikkat: Clerk Dashboard ayarlarınızda ekstra zorunlu alanlar var! Eksikler: ${completeSignUp.missingFields?.join(', ')}. Lütfen Clerk panelinden Name/Surname gibi alanların zorunluluğunu kaldırın.`);
+                return;
+            } else {
+                console.error('Sign-up not complete. Status:', completeSignUp?.status);
+                setCodeError('Kayıt tamamlanamadı. Status: ' + completeSignUp?.status);
+            }
+        } catch (error: any) {
+            console.error('Verify error:', error);
+            let msg = error?.errors?.[0]?.longMessage || error?.errors?.[0]?.message || error?.message || 'Doğrulama kodu hatalı.';
+            
+            const lowerMsg = msg.toLowerCase();
+            if (lowerMsg.includes('already been verified')) {
+                if (signUp?.status === 'missing_requirements') {
+                    msg = `E-postanız doğrulandı fakat hesabınız oluşturulamadı çünkü Clerk "Zorunlu Alanlar" eksik: ${signUp.missingFields?.join(', ')}. Clerk ayarlarınızı düzeltin.`;
+                } else if (signUp?.status === 'complete') {
+                    await setActive({ session: signUp.createdSessionId });
+                    return;
+                } else {
+                    msg = 'Bu hesap zaten doğrulandı. Lütfen ana sayfaya gidip "Giriş Yap" butonunu kullanın.';
+                }
+            } else if (lowerMsg.includes('incorrect code') || lowerMsg.includes('wrong code')) {
+                msg = 'Girdiğiniz kod geçersiz. Lütfen tekrar kontrol edin.';
+            } else if (lowerMsg.includes('expired')) {
+                msg = 'Doğrulama kodunun süresi dolmuş. Lütfen yeni bir kod isteyin.';
+            }
+            
+            setCodeError(msg);
+        } finally {
+            setIsSigningUp(false);
         }
     };
 
     const onOAuthPress = useCallback(async (strategy: 'oauth_apple' | 'oauth_google') => {
         setOauthLoading(strategy === 'oauth_apple' ? 'apple' : 'google');
         try {
-            const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+            const { createdSessionId, signIn, signUp } = await startSSOFlow({
                 strategy,
                 redirectUrl: Linking.createURL('/oauth-native-callback', { scheme: 'unutmaapp' }),
             });
 
             if (createdSessionId) {
-                setActive!({
+                await setActive({
                     session: createdSessionId,
-                    navigate: async ({ session, decorateUrl }) => {
-                        if (session?.currentTask) {
-                            console.log(session?.currentTask);
-                            return;
-                        }
-                        router.replace(decorateUrl('/') as Href);
-                    },
+                    // navigate is only necessary in older web implementations, on mobile setActive handles it + the router
                 });
             } else {
                 if (signUp?.status === 'missing_requirements') {
@@ -157,16 +248,40 @@ export default function SignUpScreen() {
 
     const styles = makeStyles(colors);
 
+    // Clerk durumunu izlemek için log ekleyelim
+    useEffect(() => {
+        console.log("--- SIGN-UP DIAGNOSTICS ---");
+        console.log("isLoaded:", isLoaded);
+        console.log("signUp Status:", signUp?.status);
+        console.log("------------------------");
+    }, [isLoaded, signUp?.status]);
+
+    // Hata ayıklama için eksik alanları kontrol edelim
+    useEffect(() => {
+        if (signUp?.status === 'missing_requirements' && signUp.missingFields?.length > 0) {
+            console.warn('Eksik alanlar var:', signUp.missingFields);
+            // Eğer email doğrulaması dışındaki alanlar eksikse ve email doğrulanmışsa burada takılı kalabiliriz.
+        }
+    }, [signUp?.status, signUp?.missingFields]);
+
+    // Spinner'ı kaldıralım ki ekran açılsın
+    /*
+    if (!isLoaded) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+        );
+    }
+    */
+
     // Signed in or complete — render nothing
-    if (signUp.status === 'complete' || isSignedIn) {
+    if (signUp?.status === 'complete' || isSignedIn) {
         return null;
     }
 
     // Doğrulama aşaması
-    const needsVerification =
-        signUp.status === 'missing_requirements' &&
-        signUp.unverifiedFields?.includes('email_address') &&
-        signUp.missingFields?.length === 0;
+    const needsVerification = pendingVerification;
 
     if (needsVerification) {
         return (
@@ -199,9 +314,9 @@ export default function SignUpScreen() {
                             />
                         </View>
 
-                        {errors?.fields?.code && (
-                            <Text style={styles.errorText}>{errors.fields.code.message}</Text>
-                        )}
+                        {codeError ? (
+                            <Text style={styles.errorText}>{codeError}</Text>
+                        ) : null}
 
                         <TouchableOpacity
                             style={[styles.signInButton, loading && styles.signInButtonDisabled]}
@@ -218,7 +333,15 @@ export default function SignUpScreen() {
 
                         <TouchableOpacity
                             style={styles.resendButton}
-                            onPress={() => signUp.verifications.sendEmailCode()}
+                            onPress={async () => {
+                                if (typeof signUp.prepareVerification === 'function') {
+                                    await signUp.prepareVerification({ strategy: 'email_code' });
+                                } else if (typeof signUp.prepareEmailAddressVerification === 'function') {
+                                    await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+                                } else if (typeof signUp.sendEmailCode === 'function') {
+                                    await signUp.sendEmailCode();
+                                }
+                            }}
                             disabled={loading}
                         >
                             <Text style={styles.resendText}>Yeni kod gönder</Text>
@@ -299,9 +422,9 @@ export default function SignUpScreen() {
                         />
                     </View>
 
-                    {errors?.fields?.emailAddress && (
-                        <Text style={styles.errorText}>{errors.fields.emailAddress.message}</Text>
-                    )}
+                    {signupError ? (
+                        <Text style={styles.errorText}>{signupError}</Text>
+                    ) : null}
 
                     <View style={styles.inputContainer}>
                         <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
@@ -324,9 +447,12 @@ export default function SignUpScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {errors?.fields?.password && (
-                        <Text style={styles.errorText}>{errors.fields.password.message}</Text>
-                    )}
+                    {/* Şifre Kuralı Info */}
+                    <Text style={styles.infoText}>
+                        * Şifre en az 8 karakter uzunluğunda olmalıdır.
+                    </Text>
+
+
 
                     <TouchableOpacity
                         style={[styles.signInButton, (loading || !email || !password) && styles.signInButtonDisabled]}
@@ -487,6 +613,12 @@ const makeStyles = (colors: any) =>
             color: colors.red,
             fontSize: 13,
             marginTop: -8,
+            marginLeft: 4,
+        },
+        infoText: {
+            color: colors.textMuted,
+            fontSize: 12,
+            marginTop: -6,
             marginLeft: 4,
         },
         signInButton: {

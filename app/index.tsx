@@ -4,12 +4,10 @@ import DayView from '@/components/DayView';
 import FirstTaskOverlay from '@/components/FirstTaskOverlay';
 import PermanentNotesModal from '@/components/PermanentNotesModal';
 import ReminderBottomSheet from '@/components/ReminderBottomSheet';
-import WelcomeScreen from '@/components/WelcomeScreen';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTaskStore } from '@/store/taskStore';
 import { cancelNotification, manageDailyMotivationalReminder, manageWeeklyPlanningReminder, schedulePushNotification } from '@/utils/notifications';
 import BottomSheet from '@gorhom/bottom-sheet';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDays, differenceInCalendarDays, format } from 'date-fns';
 import * as Haptics from 'expo-haptics';
@@ -18,8 +16,14 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, AppState, Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import PagerView from 'react-native-pager-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const PagerView = Platform.OS === 'web' 
+    ? React.forwardRef((props: any, ref: any) => {
+        const { ScrollView } = require('react-native');
+        return <ScrollView ref={ref} horizontal pagingEnabled style={props.style}>{props.children}</ScrollView>;
+      })
+    : require('react-native-pager-view').default;
 
 export default function HomeScreen() {
     const C = useThemeColors();
@@ -30,12 +34,11 @@ export default function HomeScreen() {
     const [activePage, setActivePage] = useState(initialPage);
     const bottomSheetRef = useRef<BottomSheet>(null);
     const notesSheetRef = useRef<BottomSheet>(null);
-    const pagerRef = useRef<PagerView>(null);
+    const pagerRef = useRef<any>(null);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
-    const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
     const [tempDate, setTempDate] = useState(new Date());
     const [targetPage, setTargetPage] = useState<number | null>(null);
     const insets = useSafeAreaInsets();
@@ -145,8 +148,6 @@ export default function HomeScreen() {
     };
 
     useEffect(() => {
-        checkFirstLaunch();
-
         const syncNotifications = async () => {
             try {
                 const scheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -188,23 +189,7 @@ export default function HomeScreen() {
         manageDailyMotivationalReminder(hasPendingForTodayOrPast);
     }, [tasks]);
 
-    const checkFirstLaunch = async () => {
-        try {
-            const hasLaunched = await AsyncStorage.getItem('hasLaunched');
-            if (hasLaunched === null) {
-                setIsFirstLaunch(true);
-            } else {
-                setIsFirstLaunch(false);
-            }
-        } catch (e) {
-            setIsFirstLaunch(false);
-        }
-    };
 
-    const handleWelcomeComplete = async () => {
-        await AsyncStorage.setItem('hasLaunched', 'true');
-        setIsFirstLaunch(false);
-    };
 
     const goToPage = (page: number) => {
         const diff = Math.abs(page - activePage);
@@ -374,7 +359,7 @@ export default function HomeScreen() {
                     ref={pagerRef}
                     style={styles.pager}
                     initialPage={initialPage}
-                    onPageSelected={(e) => setActivePage(e.nativeEvent.position)}
+                    onPageSelected={(e: any) => setActivePage(e.nativeEvent.position)}
                 >
                     {Array.from({ length: 2001 }).map((_, index) => {
                         const dayOffset = index - initialPage;
@@ -504,7 +489,6 @@ export default function HomeScreen() {
                 </Animated.View>
             )}
 
-            {isFirstLaunch && <WelcomeScreen onStart={handleWelcomeComplete} />}
 
             <PermanentNotesModal
                 ref={notesSheetRef}
