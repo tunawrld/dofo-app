@@ -9,9 +9,11 @@ import Animated, {
     Easing 
 } from 'react-native-reanimated';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 
 export default function SyncLoader({ isVisible }: { isVisible: boolean }) {
     const colors = useThemeColors();
+    const { t } = useTranslation();
     const [progress, setProgress] = useState(0);
     const [shouldRender, setShouldRender] = useState(isVisible);
     
@@ -71,11 +73,11 @@ export default function SyncLoader({ isVisible }: { isVisible: boolean }) {
     });
 
     const getLoadingText = () => {
-        if (progress < 30) return 'Sunucuya bağlanılıyor...';
-        if (progress < 65) return 'Görevleriniz yükleniyor...';
-        if (progress < 95) return 'Notlarınız güncelleniyor...';
-        if (progress < 100) return 'Son hazırlıklar yapılıyor...';
-        return 'Bağlantı kuruldu!';
+        if (progress < 30) return t('app.sync_connecting');
+        if (progress < 65) return t('app.sync_loading_tasks');
+        if (progress < 95) return t('app.sync_updating_notes');
+        if (progress < 100) return t('app.sync_finishing');
+        return t('app.sync_done');
     };
 
     if (!shouldRender) return null;
@@ -83,7 +85,7 @@ export default function SyncLoader({ isVisible }: { isVisible: boolean }) {
     return (
         <Animated.View style={[StyleSheet.absoluteFill, styles.container, { backgroundColor: colors.backgroundDark }, overlayStyle]}>
             <View style={styles.content}>
-                <Text style={[styles.title, { color: colors.primary }]}>remi</Text>
+                <Text style={[styles.title, { color: colors.primary }]}>Dofo</Text>
                 
                 <View style={[styles.progressBarContainer, { backgroundColor: colors.textMuted + '25' }]}>
                     <Animated.View style={[styles.progressBarFill, { backgroundColor: colors.primary }, progressStyle]} />

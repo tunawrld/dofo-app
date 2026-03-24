@@ -1,4 +1,6 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
+import { useLanguageStore } from '@/store/languageStore';
 import { getProfile, Profile, upsertProfile } from '@/lib/supabase';
 import { useAuth, useUser } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +23,9 @@ export default function ProfileScreen() {
     const { signOut, getToken } = useAuth();
     const router = useRouter();
     const colors = useThemeColors();
+    const { t } = useTranslation();
+    const language = useLanguageStore((state) => state.language);
+    const setLanguage = useLanguageStore((state) => state.setLanguage);
 
     const [profile, setProfile] = useState<Profile | null>(null);
     const [fullName, setFullName] = useState('');
@@ -97,13 +102,13 @@ export default function ProfileScreen() {
             if (updated) {
                 setProfile(updated);
                 setEditing(false);
-                Alert.alert('Başarılı', 'Profil güncellendi!');
+                Alert.alert(t('profile.success'), t('profile.update_success'));
             } else {
-                Alert.alert('Hata', 'Profil güncellenirken bir hata oluştu.');
+                Alert.alert(t('profile.error'), t('profile.update_error'));
             }
         } catch (error) {
             console.error('Error saving profile:', error);
-            Alert.alert('Hata', 'Profil güncellenirken bir hata oluştu.');
+            Alert.alert(t('profile.error'), t('profile.update_error'));
         } finally {
             setSaving(false);
         }
@@ -111,12 +116,12 @@ export default function ProfileScreen() {
 
     const handleSignOut = useCallback(async () => {
         Alert.alert(
-            'Çıkış Yap',
-            'Hesabından çıkış yapmak istediğine emin misin?',
+            t('profile.signout_confirm_title'),
+            t('profile.signout_confirm_msg'),
             [
-                { text: 'İptal', style: 'cancel' },
+                { text: t('profile.cancel'), style: 'cancel' },
                 {
-                    text: 'Çıkış Yap',
+                    text: t('profile.signout'),
                     style: 'destructive',
                     onPress: async () => {
                         await signOut();
@@ -125,7 +130,7 @@ export default function ProfileScreen() {
                 },
             ]
         );
-    }, [signOut, router]);
+    }, [signOut, router, t]);
 
     const styles = makeStyles(colors);
 
@@ -138,7 +143,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color={colors.textLight} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Profil</Text>
+                <Text style={styles.headerTitle}>{t('profile.title')}</Text>
                 <View style={{ width: 28 }} />
             </View>
 
@@ -153,7 +158,7 @@ export default function ProfileScreen() {
                     <View style={styles.onlineDot} />
                 </View>
                 <Text style={styles.displayName}>
-                    {fullName || user?.fullName || user?.firstName || 'Kullanıcı'}
+                    {fullName || user?.fullName || user?.firstName || t('profile.default_username')}
                 </Text>
                 <Text style={styles.emailText}>
                     {user?.emailAddresses[0]?.emailAddress || ''}
@@ -162,10 +167,10 @@ export default function ProfileScreen() {
 
             {/* Profile Form */}
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Profil Bilgileri</Text>
+                <Text style={styles.sectionTitle}>{t('profile.info')}</Text>
 
                 <View style={styles.fieldContainer}>
-                    <Text style={styles.fieldLabel}>Ad Soyad</Text>
+                    <Text style={styles.fieldLabel}>{t('profile.name')}</Text>
                     {editing ? (
                         <View style={styles.editInputContainer}>
                             <Ionicons name="person-outline" size={18} color={colors.textMuted} />
@@ -173,7 +178,7 @@ export default function ProfileScreen() {
                                 style={styles.editInput}
                                 value={fullName}
                                 onChangeText={setFullName}
-                                placeholder="Adınız Soyadınız"
+                                placeholder={t('profile.name')}
                                 placeholderTextColor={colors.textMuted}
                             />
                         </View>
@@ -186,7 +191,7 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.fieldContainer}>
-                    <Text style={styles.fieldLabel}>Email</Text>
+                    <Text style={styles.fieldLabel}>{t('profile.email')}</Text>
                     <View style={styles.fieldValueContainer}>
                         <Ionicons name="mail-outline" size={18} color={colors.textMuted} />
                         <Text style={styles.fieldValueDisabled}>
@@ -195,7 +200,34 @@ export default function ProfileScreen() {
                     </View>
                 </View>
 
-
+                <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>{t('profile.language')}</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                        {['en', 'tr', 'es', 'de', 'fr'].map((lang) => (
+                            <TouchableOpacity
+                                key={lang}
+                                onPress={() => setLanguage(lang)}
+                                style={{
+                                    paddingVertical: 6,
+                                    paddingHorizontal: 12,
+                                    borderRadius: 12,
+                                    backgroundColor: language === lang ? colors.primary : colors.inputBg,
+                                    borderWidth: 1,
+                                    borderColor: language === lang ? colors.primary : colors.textMuted + '30',
+                                }}
+                            >
+                                <Text style={{
+                                    color: language === lang ? '#fff' : colors.textLight,
+                                    fontSize: 14,
+                                    fontWeight: '600',
+                                    textTransform: 'uppercase'
+                                }}>
+                                    {lang}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
 
                 {editing ? (
                     <View style={styles.editButtons}>
@@ -206,7 +238,7 @@ export default function ProfileScreen() {
                                 setFullName(profile?.full_name || '');
                             }}
                         >
-                            <Text style={styles.cancelButtonText}>İptal</Text>
+                            <Text style={styles.cancelButtonText}>{t('profile.cancel')}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -216,7 +248,7 @@ export default function ProfileScreen() {
                             {saving ? (
                                 <ActivityIndicator color="#fff" size="small" />
                             ) : (
-                                <Text style={styles.saveButtonText}>Kaydet</Text>
+                                <Text style={styles.saveButtonText}>{t('profile.save')}</Text>
                             )}
                         </TouchableOpacity>
                     </View>
@@ -226,7 +258,7 @@ export default function ProfileScreen() {
                         onPress={() => setEditing(true)}
                     >
                         <Ionicons name="create-outline" size={18} color={colors.primary} />
-                        <Text style={styles.editButtonText}>Düzenle</Text>
+                        <Text style={styles.editButtonText}>{t('profile.edit')}</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -234,7 +266,7 @@ export default function ProfileScreen() {
             {/* Sign Out */}
             <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
                 <Ionicons name="log-out-outline" size={20} color={colors.red} />
-                <Text style={styles.signOutText}>Çıkış Yap</Text>
+                <Text style={styles.signOutText}>{t('profile.signout')}</Text>
             </TouchableOpacity>
 
             <View style={{ height: 40 }} />

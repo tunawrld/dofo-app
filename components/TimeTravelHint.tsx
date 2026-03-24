@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, StyleSheet, Text, View } from 'react-native';
@@ -13,6 +14,7 @@ interface TimeTravelHintProps {
 
 export default function TimeTravelHint({ pagerRef, currentPage }: TimeTravelHintProps) {
     const C = useThemeColors();
+    const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
     const [checked, setChecked] = useState(false);
 
@@ -145,7 +147,7 @@ export default function TimeTravelHint({ pagerRef, currentPage }: TimeTravelHint
         >
             {/* Üst kısım: "Zamanda gez" yazısı */}
             <Animated.View style={[styles.topBar, { opacity: textOpacity }]}>
-                <Text style={[styles.hint, { color: C.textLight }]}>Zamanda gez</Text>
+                <Text style={[styles.hint, { color: C.textLight }]}>{t('app.time_travel')}</Text>
                 <View style={styles.line} />
             </Animated.View>
 

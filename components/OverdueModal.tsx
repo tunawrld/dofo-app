@@ -1,8 +1,8 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { Task } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -18,6 +18,7 @@ interface OverdueModalProps {
 
 export default function OverdueModal({ visible, tasks, onClose, onMoveAllToToday, onToggleTask, onDeleteTask }: OverdueModalProps) {
     const C = useThemeColors();
+    const { t, formatDate } = useTranslation();
     const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
 
     // Reset completing status when modal closes or tasks change significantly
@@ -70,7 +71,7 @@ export default function OverdueModal({ visible, tasks, onClose, onMoveAllToToday
                             <View style={[styles.iconBadge, { backgroundColor: C.red + '15' }]}>
                                 <Ionicons name="warning" size={20} color={C.red} />
                             </View>
-                            <Text style={[styles.title, { color: C.textLight }]}>Geciken Görevler</Text>
+                            <Text style={[styles.title, { color: C.textLight }]}>{t('app.overdue_tasks')}</Text>
                         </View>
                         <Pressable onPress={onClose} hitSlop={10}>
                             <Ionicons name="close" size={24} color={C.textMuted} />
@@ -78,7 +79,7 @@ export default function OverdueModal({ visible, tasks, onClose, onMoveAllToToday
                     </View>
 
                     <Text style={[styles.subtitle, { color: C.textMuted }]}>
-                        Tamamlanmamış {tasks.length} göreviniz var. Bunları bugüne taşımak ister misiniz?
+                        {tasks.length} {t('app.uncompleted_tasks')}
                     </Text>
 
                     <ScrollView style={styles.list} contentContainerStyle={{ gap: 10 }}>
@@ -126,7 +127,7 @@ export default function OverdueModal({ visible, tasks, onClose, onMoveAllToToday
                                             {task.text}
                                         </Text>
                                         <Text style={[styles.itemDate, { color: C.textMuted }]}>
-                                            {format(new Date(task.date), 'd MMMM', { locale: tr })}
+                                            {formatDate(new Date(task.date), 'd MMMM')}
                                         </Text>
                                     </Pressable>
 
@@ -147,7 +148,7 @@ export default function OverdueModal({ visible, tasks, onClose, onMoveAllToToday
                             style={[styles.moveButton, { backgroundColor: C.primary }]}
                             onPress={onMoveAllToToday}
                         >
-                            <Text style={[styles.moveButtonText, { color: C.backgroundDark }]}>Hepsini Bugüne Taşı</Text>
+                            <Text style={[styles.moveButtonText, { color: C.backgroundDark }]}>{t('app.move_all_today')}</Text>
                             <Ionicons name="arrow-forward" size={16} color={C.backgroundDark} />
                         </Pressable>
                     </View>

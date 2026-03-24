@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { useNotesStore } from '@/store/notesStore';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
@@ -13,6 +14,7 @@ interface PermanentNotesModalProps {
 const PermanentNotesModal = forwardRef<BottomSheet, PermanentNotesModalProps>(
     ({ isOpen, onClose }, ref) => {
         const C = useThemeColors();
+        const { t } = useTranslation();
         const storeNote = useNotesStore((state) => state.note);
         const setStoreNote = useNotesStore((state) => state.setNote);
 
@@ -80,7 +82,7 @@ const PermanentNotesModal = forwardRef<BottomSheet, PermanentNotesModalProps>(
                         }} hitSlop={12}>
                             <Ionicons name="close" size={28} color={C.textLight} />
                         </Pressable>
-                        <Text style={[styles.title, { color: C.textLight }]}>Kalıcı Notlar</Text>
+                        <Text style={[styles.title, { color: C.textLight }]}>{t('app.permanent_notes')}</Text>
                         <View style={{ width: 44 }} />
                     </View>
 
@@ -105,7 +107,7 @@ const PermanentNotesModal = forwardRef<BottomSheet, PermanentNotesModalProps>(
                             ))}
                             <BottomSheetTextInput
                                 style={[styles.input, { color: C.textLight }]}
-                                placeholder="Silinmeyecek satırlar, unutulmayacak fikirler..."
+                                placeholder={t('app.permanent_notes_placeholder')}
                                 placeholderTextColor={C.textMuted + '60'}
                                 multiline
                                 value={localNote}

@@ -3,8 +3,8 @@ import { Fonts } from '@/constants/theme';
 
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { addDays, addHours, format, isToday, isTomorrow, setHours, setMinutes } from 'date-fns';
-import { tr } from 'date-fns/locale';
+import { format, addDays, addHours, isToday, isTomorrow, setHours, setMinutes } from 'date-fns';
+import { useTranslation } from '@/lib/i18n';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -34,6 +34,7 @@ export default function TimerBubble({
     onCancel,
     onDelete
 }: TimerBubbleProps) {
+    const { t, formatDate } = useTranslation();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showPicker, setShowPicker] = useState(false);
     const [pickerMode, setPickerMode] = useState<'date' | 'time'>('time');
@@ -91,19 +92,19 @@ export default function TimerBubble({
     };
 
     const quickSuggestions = [
-        { label: '+1 Saat', action: () => setSelectedDate(addHours(new Date(), 1)) },
-        { label: 'Bu Akşam', action: () => setSelectedDate(setHours(setMinutes(new Date(), 0), 21)) },
-        { label: 'Yarın', action: () => setSelectedDate(setHours(addDays(new Date(), 1), 9)) },
-        { label: 'Haftaya', action: () => setSelectedDate(addDays(new Date(), 7)) },
+        { label: t('app.in_1_hour'), action: () => setSelectedDate(addHours(new Date(), 1)) },
+        { label: t('app.tonight_21'), action: () => setSelectedDate(setHours(setMinutes(new Date(), 0), 21)) },
+        { label: t('app.tomorrow_morning'), action: () => setSelectedDate(setHours(addDays(new Date(), 1), 9)) },
+        { label: t('app.next_week'), action: () => setSelectedDate(addDays(new Date(), 7)) },
     ];
 
 
 
     if (!visible) return null;
 
-    let dateLabel = format(selectedDate, 'd MMM', { locale: tr });
-    if (isToday(selectedDate)) dateLabel = 'Bugün';
-    if (isTomorrow(selectedDate)) dateLabel = 'Yarın';
+    let dateLabel = formatDate(selectedDate, 'd MMM');
+    if (isToday(selectedDate)) dateLabel = t('app.today');
+    if (isTomorrow(selectedDate)) dateLabel = t('app.tomorrow');
 
     return (
         <View style={[styles.overlay]} pointerEvents="box-none">
@@ -189,7 +190,7 @@ export default function TimerBubble({
                         </Pressable>
 
                         <Pressable style={styles.saveButton} onPress={handleSave}>
-                            <Text style={styles.saveButtonText}>Zamanla</Text>
+                            <Text style={styles.saveButtonText}>{t('app.schedule')}</Text>
                             <Ionicons name="arrow-forward" size={16} color={Colors.backgroundDark} />
                         </Pressable>
                     </View>

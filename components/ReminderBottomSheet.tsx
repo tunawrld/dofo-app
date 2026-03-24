@@ -1,10 +1,9 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
-
+import { useTranslation } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView, BottomSheetTextInput } from '@gorhom/bottom-sheet';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDays, addHours, format, isToday, isTomorrow, setHours, setMinutes } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import * as Haptics from 'expo-haptics';
 import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
@@ -24,6 +23,7 @@ interface ReminderBottomSheetProps {
 const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
     ({ taskText, onSave, onCancel, isOpen, existingDate, onMoveToTomorrow, onDelete, onRemoveReminder, onSheetChange }, ref) => {
         const C = useThemeColors();
+        const { t, formatDate } = useTranslation();
         const colorScheme = useColorScheme();
         const [snapPoints, setSnapPoints] = useState(['65%']);
         const [selectedDate, setSelectedDate] = useState(new Date());
@@ -108,15 +108,15 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
         };
 
         const quickSuggestions = [
-            { label: '1 saat sonra', action: () => setSelectedDate(addHours(new Date(), 1)) },
-            { label: 'Bu akşam 21:00', action: () => setSelectedDate(setHours(setMinutes(new Date(), 0), 21)) },
-            { label: 'Yarın sabah', action: () => setSelectedDate(setHours(addDays(new Date(), 1), 9)) },
-            { label: 'Haftaya', action: () => setSelectedDate(addDays(new Date(), 7)) },
+            { label: t('app.in_1_hour'), action: () => setSelectedDate(addHours(new Date(), 1)) },
+            { label: t('app.tonight_21'), action: () => setSelectedDate(setHours(setMinutes(new Date(), 0), 21)) },
+            { label: t('app.tomorrow_morning'), action: () => setSelectedDate(setHours(addDays(new Date(), 1), 9)) },
+            { label: t('app.next_week'), action: () => setSelectedDate(addDays(new Date(), 7)) },
         ];
 
-        let dateLabel = format(selectedDate, 'd MMMM EEEE', { locale: tr });
-        if (isToday(selectedDate)) dateLabel = 'Bugün';
-        if (isTomorrow(selectedDate)) dateLabel = 'Yarın';
+        let dateLabel = formatDate(selectedDate, 'd MMMM EEEE');
+        if (isToday(selectedDate)) dateLabel = t('app.go_to_today');
+        if (isTomorrow(selectedDate)) dateLabel = t('app.move_tomorrow');
 
         const timeLabel = format(selectedDate, 'HH:mm');
 
@@ -146,7 +146,7 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
                         <BottomSheetTextInput
                             ref={inputRef}
                             style={[styles.taskInput, { color: C.textLight }]}
-                            placeholder="Unutmadan yaz..."
+                            placeholder={t('app.write_before_forget')}
                             placeholderTextColor={C.textMuted + '80'}
                             value={taskInputText}
                             onChangeText={setTaskInputText}
@@ -166,7 +166,7 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
                                 <View style={[styles.existingReminderBanner, { backgroundColor: C.primary + '15', borderColor: C.primary + '20' }]}>
                                     <Ionicons name="checkmark-circle-outline" size={18} color={C.primary} />
                                     <Text style={[styles.existingReminderText, { color: C.primary }]}>
-                                        Zamanlandı: {format(existingDate, 'd MMMM HH:mm', { locale: tr })}
+                                        {t('app.scheduled')} {formatDate(existingDate, 'd MMMM HH:mm')}
                                     </Text>
                                 </View>
                                 {onRemoveReminder && (
@@ -185,14 +185,14 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
 
                         <View style={styles.reminderHeader}>
                             <Ionicons name="notifications-outline" size={20} color={C.primary} />
-                            <Text style={[styles.reminderLabel, { color: C.primary }]}>Zamanlayıcı</Text>
+                            <Text style={[styles.reminderLabel, { color: C.primary }]}>{t('app.timer')}</Text>
                         </View>
 
                         {/* Large Date Display Card */}
                         <View style={[styles.dateDisplayCard, { backgroundColor: C.border + '08', borderColor: C.border + '0D' }]}>
                             <Pressable style={styles.dateInfoLeft} onPress={handleDatePress}>
                                 <Text style={[styles.dateLabelText, { color: C.textLight }]}>{dateLabel}</Text>
-                                <Text style={[styles.fullDateText, { color: C.textMuted }]}>{format(selectedDate, 'd MMMM yyyy', { locale: tr })}</Text>
+                                <Text style={[styles.fullDateText, { color: C.textMuted }]}>{formatDate(selectedDate, 'd MMMM yyyy')}</Text>
                             </Pressable>
                             <Pressable
                                 style={[styles.timeInfoRight, { backgroundColor: C.primary + '1A', borderColor: C.primary + '30' }]}
@@ -264,8 +264,8 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
                                 onPress={handleMoveToTomorrow}
                             >
                                 <Ionicons name="arrow-forward-outline" size={18} color={C.primary} />
-                                <Text style={[styles.moveToTomorrowText, { color: C.primary }]}>Yarına Aktar</Text>
-                                <Text style={[styles.moveToTomorrowSubtext, { color: C.primary + 'AA' }]}>Görevi yarın için planla</Text>
+                                <Text style={[styles.moveToTomorrowText, { color: C.primary }]}>{t('app.move_tomorrow')}</Text>
+                                <Text style={[styles.moveToTomorrowSubtext, { color: C.primary + 'AA' }]}>{t('app.schedule_tomorrow')}</Text>
                             </Pressable>
                         )}
                     </View>
@@ -291,10 +291,10 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
                         style={styles.deleteButtonContainer}
                     >
                         <Ionicons name="trash-outline" size={18} color={C.red} />
-                        <Text style={[styles.deleteButton, { color: C.red }]}>Sil</Text>
+                        <Text style={[styles.deleteButton, { color: C.red }]}>{t('app.delete')}</Text>
                     </Pressable>
                     <Pressable onPress={handleSave} style={[styles.saveButton, { backgroundColor: C.primary }]}>
-                        <Text style={[styles.saveButtonText, { color: C.backgroundDark }]}>Kaydet</Text>
+                        <Text style={[styles.saveButtonText, { color: C.backgroundDark }]}>{t('app.save')}</Text>
                     </Pressable>
                 </View>
             </BottomSheet>

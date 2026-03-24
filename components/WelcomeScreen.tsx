@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useEffect, useRef, useState } from 'react';
@@ -10,32 +11,34 @@ interface WelcomeScreenProps {
     onStart: () => void;
 }
 
-const SLIDES = [
-    {
-        icon: 'timer-outline' as const,
-        title: 'Zaman Akıp Gidiyor',
-        subtitle: 'Bugün de "yarın yaparım" dediğin günlerden biri mi? Hayatını ertelemeye devam edersen, hiçbir zaman hazır olamayacaksın.',
-    },
-    {
-        icon: 'trending-down-outline' as const,
-        title: 'Acı Gerçek',
-        subtitle: 'İnsanların %90\'ı plan yapar ama ilk zorlukta pes eder. Sıradanlığa teslim olmak senin için daha kolaysa, bu uygulamayı hemen silebilirsin.',
-    },
-    {
-        icon: 'barbell-outline' as const,
-        title: 'Mazeretlere Yer Yok',
-        subtitle: 'Burada seni pohpohlayacak kimse yok. Acıması olmayan bir düzen kurup kendi sınırlarını aşmalısın.',
-    },
-    {
-        icon: 'skull-outline' as const,
-        title: 'Buna Cidden Hazır mısın?',
-        subtitle: 'Ezik psikolojisinden çıkıp disiplini kucaklıyorsan başla. İki gün sonra sileceksen, hiç vaktimizi alma.',
-    }
-];
 
 export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
     const C = useThemeColors();
+    const { t } = useTranslation();
     const [currentIndex, setCurrentIndex] = useState(0);
+
+    const SLIDES = [
+        {
+            icon: 'timer-outline' as const,
+            title: t('welcome.slide1_title'),
+            subtitle: t('welcome.slide1_subtitle'),
+        },
+        {
+            icon: 'trending-down-outline' as const,
+            title: t('welcome.slide2_title'),
+            subtitle: t('welcome.slide2_subtitle'),
+        },
+        {
+            icon: 'barbell-outline' as const,
+            title: t('welcome.slide3_title'),
+            subtitle: t('welcome.slide3_subtitle'),
+        },
+        {
+            icon: 'skull-outline' as const,
+            title: t('welcome.slide4_title'),
+            subtitle: t('welcome.slide4_subtitle'),
+        }
+    ];
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(40)).current;
@@ -95,9 +98,9 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
     const handleGiveUp = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert(
-            "Acizliğin İlanı",
-            "Demek daha başlamadan korkutmayı başardık. \n\nKolay olanı seçip pes ediyorsun. Bir daha denemeye cesaretin olduğunda görüşürüz.",
-            [{ text: "Haklısın, Korkaklık Etmeyeceğim", onPress: () => { } }]
+            t('welcome.coward_title'),
+            t('welcome.coward_msg'),
+            [{ text: t('welcome.coward_button'), onPress: () => { } }]
         );
     };
 
@@ -117,7 +120,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
         ]).start(() => onStart());
     };
 
-    const renderItem = ({ item }: { item: typeof SLIDES[0] }) => {
+    const renderItem = ({ item }: { item: { icon: any, title: string, subtitle: string } }) => {
         return (
             <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
                 <View style={[styles.iconContainer, { backgroundColor: C.primary + '15', borderColor: C.primary + '30' }]}>
@@ -203,7 +206,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
                                 ]}
                                 onPress={handleNext}
                             >
-                                <Text style={[styles.buttonText, { color: C.backgroundDark }]}>Bunu Biliyorum, Devam Et</Text>
+                                <Text style={[styles.buttonText, { color: C.backgroundDark }]}>{t('welcome.continue')}</Text>
                                 <Ionicons name="chevron-forward" size={24} color={C.backgroundDark} />
                             </Pressable>
                         ) : (
@@ -215,7 +218,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
                                     ]}
                                     onPress={handleStart}
                                 >
-                                    <Text style={[styles.buttonText, { color: C.backgroundDark }]}>Evet, Söz Veriyorum</Text>
+                                    <Text style={[styles.buttonText, { color: C.backgroundDark }]}>{t('welcome.promise')}</Text>
                                     <Ionicons name="flame" size={24} color={C.backgroundDark} />
                                 </Pressable>
                                 <Pressable
@@ -225,7 +228,7 @@ export default function WelcomeScreen({ onStart }: WelcomeScreenProps) {
                                     ]}
                                     onPress={handleGiveUp}
                                 >
-                                    <Text style={[styles.outlineButtonText, { color: '#e53935' }]}>Pes Etmek İstiyorum</Text>
+                                    <Text style={[styles.outlineButtonText, { color: '#e53935' }]}>{t('welcome.give_up')}</Text>
                                     <Ionicons name="close" size={24} color={'#e53935'} />
                                 </Pressable>
                             </View>

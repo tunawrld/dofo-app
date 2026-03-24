@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { useAuth, useSignUp, useSSO, useClerk } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -76,6 +77,7 @@ export default function SignUpScreen() {
     const { startSSOFlow } = useSSO();
     const router = useRouter();
     const colors = useThemeColors();
+    const { t } = useTranslation();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -92,11 +94,11 @@ export default function SignUpScreen() {
 
     const onSignUp = async () => {
         if (!signUp) {
-            Alert.alert('Hata', 'Clerk Sign-Up objesi yüklenmedi.');
+            Alert.alert(t('auth.error'), t('auth.clerk_not_loaded'));
             return;
         }
         if (!email.trim() || !password.trim()) {
-            Alert.alert('Uyarı', 'Lütfen e-posta ve şifrenizi girin.');
+            Alert.alert(t('auth.warning'), t('auth.required_fields'));
             return;
         }
 
@@ -140,23 +142,23 @@ export default function SignUpScreen() {
             // İngilizce Clerk hatalarını Türkçeye çevirme
             const lowerMsg = msg.toLowerCase();
             if (lowerMsg.includes('password is too short') || lowerMsg.includes('8 character')) {
-                msg = 'Şifreniz çok kısa. Lütfen en az 8 karakter uzunluğunda bir şifre girin.';
+                msg = t('auth.pass_too_short');
             } else if (lowerMsg.includes('has been taken') || lowerMsg.includes('already exists') || lowerMsg.includes('is taken')) {
-                msg = 'Bu e-posta adresi zaten kullanılıyor. Lütfen giriş yapın veya farklı bir adres deneyin.';
+                msg = t('auth.email_taken');
             } else if (lowerMsg.includes('invalid email') || lowerMsg.includes('invalid_email_address')) {
-                msg = 'Geçersiz bir e-posta adresi girdiniz. Lütfen kontrol edip tekrar deneyin.';
+                msg = t('auth.invalid_email');
             } else if (lowerMsg.includes('already have an active sign up') || lowerMsg.includes('sign up is already in progress')) {
-                msg = 'Daha önceden başlatılmış ve tamamlanmamış bir kayıt işleminiz var. Farklı bir mail deniyor olabilirsiniz, uygulamayı yeniden başlatmanız gerekebilir.';
+                msg = t('auth.active_signup_exists');
             }
 
             setSignupError(msg);
             
             if (lowerMsg.includes('captcha')) {
-                const captchaMsg = 'Güvenlik doğrulaması (CAPTCHA) hatası. Lütfen Clerk Dashboard\'dan Bot Detection ayarını kapatın veya CAPTCHA entegrasyonunu tamamlayın.';
+                const captchaMsg = t('auth.captcha_error');
                 setSignupError(captchaMsg);
-                Alert.alert('Kayıt Hatası', captchaMsg);
+                Alert.alert(t('auth.signup_error'), captchaMsg);
             } else {
-                Alert.alert('Kayıt Hatası', msg);
+                Alert.alert(t('auth.signup_error'), msg);
             }
         } finally {
             setIsSigningUp(false);
@@ -189,11 +191,11 @@ export default function SignUpScreen() {
                 // AuthRoutingGuard will automatically handle the navigation to '/'!
             } else if (completeSignUp?.status === 'missing_requirements') {
                 console.error('Missing requirements:', completeSignUp.missingFields);
-                setCodeError(`Dikkat: Clerk Dashboard ayarlarınızda ekstra zorunlu alanlar var! Eksikler: ${completeSignUp.missingFields?.join(', ')}. Lütfen Clerk panelinden Name/Surname gibi alanların zorunluluğunu kaldırın.`);
+                setCodeError(`${t('auth.missing_requirements')} ${completeSignUp.missingFields?.join(', ')}.`);
                 return;
             } else {
                 console.error('Sign-up not complete. Status:', completeSignUp?.status);
-                setCodeError('Kayıt tamamlanamadı. Status: ' + completeSignUp?.status);
+                setCodeError(`${t('auth.error')} Status: ` + completeSignUp?.status);
             }
         } catch (error: any) {
             console.error('Verify error:', error);
@@ -202,17 +204,17 @@ export default function SignUpScreen() {
             const lowerMsg = msg.toLowerCase();
             if (lowerMsg.includes('already been verified')) {
                 if (signUp?.status === 'missing_requirements') {
-                    msg = `E-postanız doğrulandı fakat hesabınız oluşturulamadı çünkü Clerk "Zorunlu Alanlar" eksik: ${signUp.missingFields?.join(', ')}. Clerk ayarlarınızı düzeltin.`;
+                    msg = `${t('auth.missing_requirements')} ${signUp.missingFields?.join(', ')}.`;
                 } else if (signUp?.status === 'complete') {
                     await setActive({ session: signUp.createdSessionId });
                     return;
                 } else {
-                    msg = 'Bu hesap zaten doğrulandı. Lütfen ana sayfaya gidip "Giriş Yap" butonunu kullanın.';
+                    msg = t('auth.already_verified_login');
                 }
             } else if (lowerMsg.includes('incorrect code') || lowerMsg.includes('wrong code')) {
-                msg = 'Girdiğiniz kod geçersiz. Lütfen tekrar kontrol edin.';
+                msg = t('auth.wrong_code');
             } else if (lowerMsg.includes('expired')) {
-                msg = 'Doğrulama kodunun süresi dolmuş. Lütfen yeni bir kod isteyin.';
+                msg = t('auth.code_expired');
             }
             
             setCodeError(msg);
@@ -298,7 +300,7 @@ export default function SignUpScreen() {
                         <View style={styles.verifyIconContainer}>
                             <Ionicons name="mail-open-outline" size={48} color={colors.primary} />
                         </View>
-                        <Text style={styles.appName}>Email Doğrulama</Text>
+                        <Text style={styles.appName}>{t('auth.email_verification')}</Text>
                         <Text style={styles.subtitle}>
                             {email} adresine gönderilen kodu girin
                         </Text>
@@ -331,7 +333,7 @@ export default function SignUpScreen() {
                             {loading ? (
                                 <ActivityIndicator color="#fff" />
                             ) : (
-                                <Text style={styles.signInButtonText}>Doğrula</Text>
+                                <Text style={styles.signInButtonText}>{t('auth.verify')}</Text>
                             )}
                         </TouchableOpacity>
 
@@ -348,7 +350,7 @@ export default function SignUpScreen() {
                             }}
                             disabled={loading}
                         >
-                            <Text style={styles.resendText}>Yeni kod gönder</Text>
+                            <Text style={styles.resendText}>{t('auth.resend_code')}</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -364,8 +366,8 @@ export default function SignUpScreen() {
             <View style={styles.inner}>
                 {/* Header */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.appName}>remi</Text>
-                    <Text style={styles.subtitle}>Yeni hesap oluştur</Text>
+                    <Text style={styles.appName}>Dofo</Text>
+                    <Text style={styles.subtitle}>{t('auth.new_account')}</Text>
                 </View>
 
                 {/* OAuth Buttons */}
@@ -381,7 +383,7 @@ export default function SignUpScreen() {
                         ) : (
                             <>
                                 <AppleLogo size={20} color="#fff" />
-                                <Text style={styles.appleButtonText}>Apple ile kayıt ol</Text>
+                                <Text style={styles.appleButtonText}>{t('auth.apple')}</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -397,7 +399,7 @@ export default function SignUpScreen() {
                         ) : (
                             <>
                                 <GoogleLogo size={20} />
-                                <Text style={styles.googleButtonText}>Google ile kayıt ol</Text>
+                                <Text style={styles.googleButtonText}>{t('auth.google')}</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -406,7 +408,7 @@ export default function SignUpScreen() {
                 {/* Divider */}
                 <View style={styles.divider}>
                     <View style={[styles.dividerLine, { backgroundColor: colors.textMuted + '30' }]} />
-                    <Text style={styles.dividerText}>veya</Text>
+                    <Text style={styles.dividerText}>{t('auth.or')}</Text>
                     <View style={[styles.dividerLine, { backgroundColor: colors.textMuted + '30' }]} />
                 </View>
 
@@ -467,7 +469,7 @@ export default function SignUpScreen() {
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.signInButtonText}>Kayıt Ol</Text>
+                            <Text style={styles.signInButtonText}>{t('auth.signup')}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -477,10 +479,10 @@ export default function SignUpScreen() {
 
                 {/* Footer */}
                 <View style={styles.footerSection}>
-                    <Text style={styles.footerText}>Zaten hesabın var mı? </Text>
+                    <Text style={styles.footerText}>{t('auth.have_account')} </Text>
                     <Link href="/sign-in" asChild>
                         <TouchableOpacity>
-                            <Text style={styles.linkText}>Giriş Yap</Text>
+                            <Text style={styles.linkText}>{t('auth.signin')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

@@ -31,6 +31,12 @@ function AuthRoutingGuard() {
   const hasSyncedUser = React.useRef(false);
   const setUserId = useUserStore((state) => state.setUserId);
   const currentUserId = useUserStore((state) => state.userId);
+  const setIsSignedIn = useUserStore((state) => state.setIsSignedIn);
+
+  // Keep store in sync with Clerk auth state for use outside ClerkProvider
+  useEffect(() => {
+    setIsSignedIn(!!isSignedIn);
+  }, [isSignedIn]);
 
   useEffect(() => {
     setClerkTokenGetter(() => getToken({ template: 'supabase' }));
@@ -87,6 +93,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
   const isSyncing = useUserStore((state) => state.isSyncing);
+  const isSignedInState = useUserStore((state) => state.isSignedIn);
 
   useEffect(() => {
     registerForPushNotificationsAsync();
@@ -131,7 +138,7 @@ export default function RootLayout() {
 
           {isFirstLaunch && <WelcomeScreen onStart={handleWelcomeComplete} />}
 
-          <SyncLoader isVisible={isSyncing} />
+          <SyncLoader isVisible={isSyncing && isSignedInState} />
 
           <StatusBar style="auto" />
         </ThemeProvider>

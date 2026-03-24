@@ -6,6 +6,7 @@ import FirstTaskOverlay from '@/components/FirstTaskOverlay';
 import PermanentNotesModal from '@/components/PermanentNotesModal';
 import ReminderBottomSheet from '@/components/ReminderBottomSheet';
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { useTaskStore } from '@/store/taskStore';
 import { cancelNotification, manageDailyMotivationalReminder, manageWeeklyPlanningReminder, schedulePushNotification } from '@/utils/notifications';
 import BottomSheet from '@gorhom/bottom-sheet';
@@ -29,6 +30,7 @@ const PagerView = Platform.OS === 'web'
 export default function HomeScreen() {
     const C = useThemeColors();
     const router = useRouter();
+    const { t } = useTranslation();
     const colorScheme = useColorScheme();
     const [initialDate] = useState(new Date());
     const initialPage = 1000;
@@ -411,7 +413,7 @@ export default function HomeScreen() {
                                     onPress={e => e.stopPropagation()}
                                 >
                                     <View style={styles.modalHeader}>
-                                        <Text style={[styles.modalTitle, { color: C.textLight }]}>Tarihe Git</Text>
+                                        <Text style={[styles.modalTitle, { color: C.textLight }]}>{t('app.go_to_date')}</Text>
                                     </View>
                                     <View style={{ position: 'relative', width: '100%' }}>
                                         <DateTimePicker
@@ -485,9 +487,9 @@ export default function HomeScreen() {
             {/* Global Undo Toast */}
             {showUndo && (
                 <Animated.View style={[styles.undoContainer, { opacity: undoOpacity, backgroundColor: C.cardBg }]}>
-                    <Text style={[styles.undoText, { color: C.textLight }]}>Görev silindi</Text>
+                    <Text style={[styles.undoText, { color: C.textLight }]}>{t('app.task_deleted')}</Text>
                     <Pressable onPress={handleGlobalUndo}>
-                        <Text style={[styles.undoButton, { color: C.primary }]}>Geri Al</Text>
+                        <Text style={[styles.undoButton, { color: C.primary }]}>{t('app.undo')}</Text>
                     </Pressable>
                 </Animated.View>
             )}

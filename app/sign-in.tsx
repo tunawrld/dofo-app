@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { useSignIn, useSSO, useClerk } from '@clerk/expo';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
@@ -75,6 +76,7 @@ export default function SignInScreen() {
     const { startSSOFlow } = useSSO();
     const router = useRouter();
     const colors = useThemeColors();
+    const { t } = useTranslation();
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -87,7 +89,7 @@ export default function SignInScreen() {
 
     const onSignIn = async () => {
         if (!signIn) {
-            Alert.alert('Hata', 'Clerk Sign-In objesi yüklenmedi.');
+            Alert.alert(t('auth.error'), t('auth.clerk_not_loaded'));
             return;
         }
         if (!email.trim() || !password.trim()) return;
@@ -100,7 +102,7 @@ export default function SignInScreen() {
                 if (signIn.createdSessionId) {
                     await setActive({ session: signIn.createdSessionId });
                 } else {
-                    setSignInError('Halihazırda açık bir oturum bulundu. Yönlendiriliyor...');
+                    setSignInError(t('auth.active_session_redirect'));
                     setTimeout(() => router.replace('/'), 1200);
                 }
                 return;
@@ -116,11 +118,11 @@ export default function SignInScreen() {
                     await setActive({ session: signIn.createdSessionId });
                 } else {
                     console.warn("Session complete but createdSessionId is null.");
-                    setSignInError('Tarayıcınızda halihazırda açık bir oturum tespit edildi. Yönlendiriliyorsunuz...');
+                    setSignInError(t('auth.active_session_redirect'));
                     setTimeout(() => router.replace('/'), 1200);
                 }
             } else {
-                setSignInError('Hesaba giriş tamamlanamadı. Eksik doğrulama adımı: ' + (signIn.status || 'Bilinmiyor'));
+                setSignInError(t('auth.signin_incomplete') + (signIn.status || t('auth.unknown_error')));
             }
         } catch (err: any) {
             console.log('Sign in error:', err.errors || err.message || err);
@@ -130,7 +132,7 @@ export default function SignInScreen() {
             }
             // Çevrimdışı olma durumunda sıkça alınan Clerk hata metni
             if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('offline')) {
-                msg = 'Ağ bağlantısı koptu. Lütfen internetinizi kontrol edin.';
+                msg = t('auth.network_error');
             }
             setSignInError(msg);
         } finally {
@@ -188,8 +190,8 @@ export default function SignInScreen() {
             <View style={styles.inner}>
                 {/* Header */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.appName}>remi</Text>
-                    <Text style={styles.subtitle}>Hesabına giriş yap</Text>
+                    <Text style={styles.appName}>Dofo</Text>
+                    <Text style={styles.subtitle}>{t('auth.have_account')}</Text>
                 </View>
 
                 {/* OAuth Buttons */}
@@ -205,7 +207,7 @@ export default function SignInScreen() {
                         ) : (
                             <>
                                 <AppleLogo size={20} color="#fff" />
-                                <Text style={styles.appleButtonText}>Apple ile devam et</Text>
+                                <Text style={styles.appleButtonText}>{t('auth.apple')}</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -221,7 +223,7 @@ export default function SignInScreen() {
                         ) : (
                             <>
                                 <GoogleLogo size={20} />
-                                <Text style={styles.googleButtonText}>Google ile devam et</Text>
+                                <Text style={styles.googleButtonText}>{t('auth.google')}</Text>
                             </>
                         )}
                     </TouchableOpacity>
@@ -230,7 +232,7 @@ export default function SignInScreen() {
                 {/* Divider */}
                 <View style={styles.divider}>
                     <View style={[styles.dividerLine, { backgroundColor: colors.textMuted + '30' }]} />
-                    <Text style={styles.dividerText}>veya</Text>
+                    <Text style={styles.dividerText}>{t('auth.or')}</Text>
                     <View style={[styles.dividerLine, { backgroundColor: colors.textMuted + '30' }]} />
                 </View>
 
@@ -286,17 +288,17 @@ export default function SignInScreen() {
                         {loading ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.signInButtonText}>Giriş Yap</Text>
+                            <Text style={styles.signInButtonText}>{t('auth.signin')}</Text>
                         )}
                     </TouchableOpacity>
                 </View>
 
                 {/* Footer */}
                 <View style={styles.footerSection}>
-                    <Text style={styles.footerText}>Hesabın yok mu? </Text>
+                    <Text style={styles.footerText}>{t('auth.no_account')} </Text>
                     <Link href="/sign-up" asChild>
                         <TouchableOpacity>
-                            <Text style={styles.linkText}>Kayıt Ol</Text>
+                            <Text style={styles.linkText}>{t('auth.signup')}</Text>
                         </TouchableOpacity>
                     </Link>
                 </View>

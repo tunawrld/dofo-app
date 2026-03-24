@@ -1,4 +1,5 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { Task } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -22,6 +23,7 @@ const ITEM_HEIGHT = 56;
 
 function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart, onEditEnd, onDrag, isDragging }: TaskItemProps) {
     const C = useThemeColors();
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(task.text);
     const [now, setNow] = useState(Date.now());
@@ -93,7 +95,7 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
 
         if (task.reminderDate <= now) {
             color = C.textMuted;
-            timeLeft = 'Süre Doldu';
+            timeLeft = t('app.time_up');
             icon = 'checkmark-circle-outline';
         } else {
             const diffMins = Math.ceil((task.reminderDate - now) / 60000);
@@ -102,9 +104,9 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
             else if (diffMins <= 360) color = C.yellow;
             else color = C.primary;
 
-            if (diffMins < 60) timeLeft = `${diffMins}dk`;
-            else if (diffMins < 24 * 60) timeLeft = `${Math.floor(diffMins / 60)}sa`;
-            else timeLeft = `${Math.floor(diffMins / (24 * 60))}g`;
+            if (diffMins < 60) timeLeft = `${diffMins}${t('app.mins')}`;
+            else if (diffMins < 24 * 60) timeLeft = `${Math.floor(diffMins / 60)}${t('app.hours')}`;
+            else timeLeft = `${Math.floor(diffMins / (24 * 60))}${t('app.days')}`;
         }
 
         return { showReminder, timeLeft, color, icon };

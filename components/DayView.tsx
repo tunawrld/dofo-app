@@ -1,10 +1,10 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
+import { useTranslation } from '@/lib/i18n';
 import { useTaskStore } from '@/store/taskStore';
 import { Task } from '@/types';
 import { cancelNotification, schedulePushNotification } from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { addDays, addMonths, addWeeks, addYears, differenceInCalendarDays, format, isToday, isTomorrow, isYesterday, setHours, setMinutes } from 'date-fns';
-import { tr } from 'date-fns/locale';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -28,6 +28,7 @@ interface DayViewProps {
 
 function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNotes, onOpenProfile, onTaskComplete, onDeleteTask, onFirstTaskAdded }: DayViewProps) {
     const C = useThemeColors();
+    const { t, formatDate } = useTranslation();
     const dateKey = format(date, 'yyyy-MM-dd');
     const tasks = useTaskStore((state) => state.tasks);
     const addTask = useTaskStore((state) => state.addTask);
@@ -123,12 +124,12 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
         setShowOverdueModal(false);
     };
 
-    let headerTitle = format(date, 'EEEE', { locale: tr });
-    if (isToday(date)) headerTitle = 'Bugün';
-    if (isYesterday(date)) headerTitle = 'Dün';
-    if (isTomorrow(date)) headerTitle = 'Yarın';
+    let headerTitle = formatDate(date, 'EEEE');
+    if (isToday(date)) headerTitle = t('app.today');
+    if (isYesterday(date)) headerTitle = t('app.yesterday');
+    if (isTomorrow(date)) headerTitle = t('app.tomorrow');
 
-    const dateDisplay = format(date, 'd MMM', { locale: tr });
+    const dateDisplay = formatDate(date, 'd MMM');
     const showGoToToday = !isToday(date) && onGoToToday;
     const isPast = date < new Date();
 
@@ -269,7 +270,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
         if (reminderDate && taskId) {
             if (reminderDate > new Date()) {
                 const notifId = await schedulePushNotification(
-                    `Remi: ${finalTaskText}`,
+                    `Dofo: ${finalTaskText}`,
                     'Görevin tamamlanmayı bekliyor! 🚀',
                     reminderDate
                 );
@@ -285,11 +286,11 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
         if (isFirstTask) {
             onFirstTaskAdded?.();
         } else if (differenceInCalendarDays(targetDate, date) !== 0) {
-            const dateStr = format(targetDate, 'd MMMM EEEE', { locale: tr });
+            const dateStr = formatDate(targetDate, 'd MMMM EEEE');
             Alert.alert(
-                "Planlandı 📅",
-                `"${finalTaskText}" görevi ${dateStr} tarihine eklendi.`,
-                [{ text: "Tamam" }]
+                t('app.scheduled_alert_title'),
+                t('app.scheduled_alert_msg'),
+                [{ text: "OK" }]
             );
         }
     };
@@ -407,7 +408,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                             size={16}
                             color={C.primary}
                         />
-                        <Text style={[styles.goToTodayText, { color: C.primary }]}>Bugüne Git</Text>
+                        <Text style={[styles.goToTodayText, { color: C.primary }]}>{t('app.go_to_today')}</Text>
                     </Pressable>
                 )}
 
@@ -445,7 +446,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                                 style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
                             >
                                 <Ionicons name="person-circle-outline" size={24} color={C.textLight} />
-                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>Profil</Text>
+                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>{t('profile.title')}</Text>
                             </Pressable>
 
                             <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
@@ -455,7 +456,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                                 style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
                             >
                                 <Ionicons name="calendar-outline" size={24} color={C.textLight} />
-                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>Takvim</Text>
+                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>{t('app.calendar')}</Text>
                             </Pressable>
 
                             <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
@@ -465,7 +466,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                                 style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.primary + '20' : C.primary + '10', marginVertical: 2 })}
                             >
                                 <Ionicons name="document-text" size={24} color={C.primary} />
-                                <Text style={{ fontSize: 16, fontWeight: '600', color: C.primary }}>Kalıcı Notlar</Text>
+                                <Text style={{ fontSize: 16, fontWeight: '600', color: C.primary }}>{t('app.permanent_notes')}</Text>
                             </Pressable>
 
                             {overdueTasks.length > 0 && (
@@ -477,7 +478,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                                     >
                                         <Ionicons name="time" size={24} color={C.red || '#FF3B30'} />
                                         <Text style={{ fontSize: 16, fontWeight: '600', color: C.red || '#FF3B30' }}>
-                                            Gecikenler <Text style={{ fontSize: 14, fontWeight: 'bold' }}>({overdueTasks.length})</Text>
+                                            {t('app.overdue_tasks')} <Text style={{ fontSize: 14, fontWeight: 'bold' }}>({overdueTasks.length})</Text>
                                         </Text>
                                     </Pressable>
                                 </>
@@ -515,7 +516,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="sparkles-outline" size={48} color={C.textMuted + '40'} />
-                            <Text style={[styles.emptyText, { color: C.textMuted }]}>Henüz bir plan yok</Text>
+                            <Text style={[styles.emptyText, { color: C.textMuted }]}>{t('app.no_plan')}</Text>
                         </View>
                     }
                 />
@@ -555,7 +556,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                         onPress={() => setIsInputFocused(true)}
                     >
                         <Ionicons name="add-circle" size={22} color={C.primary} />
-                        <Text style={[styles.inputPlaceholderText, { color: C.primary }]}>Remi'ye yaz...</Text>
+                        <Text style={[styles.inputPlaceholderText, { color: C.primary }]}>{t('app.write_to_dofo')}</Text>
                     </Pressable>
                 ) : (
                     <View style={[
@@ -567,7 +568,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                     ]}>
                         <TextInput
                             style={[styles.input, { color: C.textLight }]}
-                            placeholder="Remi'ye yaz..."
+                            placeholder={t('app.write_to_dofo')}
                             placeholderTextColor={C.textMuted + '80'}
                             value={newTaskText}
                             onChangeText={setNewTaskText}
