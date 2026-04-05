@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/Colors';
+import { useTranslation } from '@/lib/i18n';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -8,6 +9,7 @@ interface StreakIndicatorProps {
 }
 
 const StreakIndicator: React.FC<StreakIndicatorProps> = ({ currentStreak, longestStreak }) => {
+    const { t } = useTranslation();
     if (currentStreak === 0) return null;
 
     return (
@@ -15,11 +17,11 @@ const StreakIndicator: React.FC<StreakIndicatorProps> = ({ currentStreak, longes
             <View style={styles.streakBadge}>
                 <Text style={styles.fireEmoji}>🔥</Text>
                 <Text style={styles.streakNumber}>{currentStreak}</Text>
-                <Text style={styles.streakText}>gün üst üste!</Text>
+                <Text style={styles.streakText}>{t('app.streak_count')}</Text>
             </View>
             {longestStreak > currentStreak && (
                 <Text style={styles.recordText}>
-                    Rekor: {longestStreak} gün 🏆
+                    {t('app.streak_record', { count: longestStreak })}
                 </Text>
             )}
         </View>

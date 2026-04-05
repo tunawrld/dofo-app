@@ -85,7 +85,7 @@ export default function SyncLoader({ isVisible }: { isVisible: boolean }) {
     return (
         <Animated.View style={[StyleSheet.absoluteFill, styles.container, { backgroundColor: colors.backgroundDark }, overlayStyle]}>
             <View style={styles.content}>
-                <Text style={[styles.title, { color: colors.primary }]}>Dofo</Text>
+                <Text style={[styles.title, { color: colors.primary }]}>dofo</Text>
                 
                 <View style={[styles.progressBarContainer, { backgroundColor: colors.textMuted + '25' }]}>
                     <Animated.View style={[styles.progressBarFill, { backgroundColor: colors.primary }, progressStyle]} />

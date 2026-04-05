@@ -29,7 +29,7 @@ export default function ProfileScreen() {
 
     const [profile, setProfile] = useState<Profile | null>(null);
     const [fullName, setFullName] = useState('');
-    const [loading, setLoading] = useState(false);  // false olarak baslatildi
+    const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState(false);
 
@@ -41,12 +41,8 @@ export default function ProfileScreen() {
 
     const loadProfile = async () => {
         if (!user) return;
-
-        // Eger onceden yuklenmis (ya da cached) profil yoksa ekranda sadece ufak bir spinner veya eski data donar/kalir
-        // Ekleyecegimiz isLoading arka planda kullanacak.
         setLoading(true);
         try {
-            // Çevrimdışı senaryosu için önce Local Storage'dan (Önbellek) yüklemeyi dene
             const cachedProfileString = await AsyncStorage.getItem(`profile_${user.id}`);
             if (cachedProfileString) {
                 const cachedProfile = JSON.parse(cachedProfileString);
@@ -54,14 +50,12 @@ export default function ProfileScreen() {
                 setFullName(cachedProfile.full_name || '');
             }
 
-            // İnternet varsa veriyi güncelle (senkronize et)
             const token = await getToken({ template: 'supabase' });
             if (!token) throw new Error('Could not get Clerk token for Supabase');
 
             let existingProfile = await getProfile(token, user.id);
 
             if (!existingProfile) {
-                // İlk giriş: profil oluştur
                 existingProfile = await upsertProfile(token, {
                     id: user.id,
                     email: user.emailAddresses[0]?.emailAddress || null,
@@ -73,12 +67,10 @@ export default function ProfileScreen() {
             if (existingProfile) {
                 setProfile(existingProfile);
                 setFullName(existingProfile.full_name || '');
-                // İnternetten çekilen en güncel veriyi Local Storage'a kaydet (internetsiz anlar için)
                 await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(existingProfile));
             }
         } catch (error: any) {
             console.warn('Network / Offline hatası yakalandı. Local veriler kullanılmaya devam ediliyor:', error.message || error);
-            // Zaten local storage'dan veri çekebildiysek sorun yok, ama çekemediysek clerk verilerini göster
             if (!profile) {
                 setFullName(user.fullName || user.firstName || '');
             }
@@ -87,32 +79,56 @@ export default function ProfileScreen() {
         }
     };
 
-    const handleSave = useCallback(async () => {
+    const handleSave = useCallback(() => {
         if (!user) return;
-        setSaving(true);
-        try {
-            const token = await getToken({ template: 'supabase' });
-            if (!token) throw new Error('Could not get Clerk token for Supabase');
+        
+        // 1. Optimistic UI Update (Instant Premium Feel)
+        const names = fullName.trim().split(' ');
+        const firstName = names[0] || '';
+        const lastName = names.slice(1).join(' ') || '';
 
-            const updated = await upsertProfile(token, {
-                id: user.id,
-                full_name: fullName.trim() || null,
-            });
+        const optimisticProfile = {
+            ...profile,
+            id: user.id,
+            full_name: fullName.trim() || null,
+        } as Profile;
 
-            if (updated) {
-                setProfile(updated);
-                setEditing(false);
-                Alert.alert(t('profile.success'), t('profile.update_success'));
-            } else {
-                Alert.alert(t('profile.error'), t('profile.update_error'));
+        setProfile(optimisticProfile);
+        setEditing(false);
+        AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(optimisticProfile)).catch(console.error);
+
+        // 2. Background Sync (Fire & Forget)
+        const syncProfile = async () => {
+            try {
+                // Update Clerk
+                try {
+                    await user.update({
+                        firstName: firstName,
+                        lastName: lastName || undefined,
+                    });
+                } catch (err: any) {
+                    console.warn("Clerk update issue:", err);
+                }
+
+                // Update Supabase
+                const token = await getToken({ template: 'supabase' }).catch(() => null);
+                if (token) {
+                    const updated = await upsertProfile(token, {
+                        id: user.id,
+                        full_name: fullName.trim() || null,
+                    });
+                    if (updated) {
+                        setProfile(updated);
+                        await AsyncStorage.setItem(`profile_${user.id}`, JSON.stringify(updated));
+                    }
+                }
+            } catch (error) {
+                console.error("Background profile sync error:", error);
             }
-        } catch (error) {
-            console.error('Error saving profile:', error);
-            Alert.alert(t('profile.error'), t('profile.update_error'));
-        } finally {
-            setSaving(false);
-        }
-    }, [user, fullName]);
+        };
+
+        syncProfile();
+    }, [user, fullName, profile, getToken]);
 
     const handleSignOut = useCallback(async () => {
         Alert.alert(
@@ -133,8 +149,6 @@ export default function ProfileScreen() {
     }, [signOut, router, t]);
 
     const styles = makeStyles(colors);
-
-
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>

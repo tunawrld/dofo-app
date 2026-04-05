@@ -190,7 +190,7 @@ export default function SignInScreen() {
             <View style={styles.inner}>
                 {/* Header */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.appName}>Dofo</Text>
+                    <Text style={styles.appName}>dofo</Text>
                     <Text style={styles.subtitle}>{t('auth.have_account')}</Text>
                 </View>
 

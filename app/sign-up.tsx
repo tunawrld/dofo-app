@@ -79,6 +79,7 @@ export default function SignUpScreen() {
     const colors = useThemeColors();
     const { t } = useTranslation();
 
+    const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -106,8 +107,14 @@ export default function SignUpScreen() {
         setSignupError('');
 
         try {
+            const names = fullName.trim().split(' ');
+            const firstName = names[0] || undefined;
+            const lastName = names.slice(1).join(' ') || undefined;
+
             // Clerk objesinin versiyonuna göre create çağrısı (Bazen obje döndürür, bazen hata fırlatır)
             const createRes: any = await signUp.create({
+                firstName,
+                lastName,
                 emailAddress: email.trim(),
                 password: password,
             });
@@ -366,7 +373,7 @@ export default function SignUpScreen() {
             <View style={styles.inner}>
                 {/* Header */}
                 <View style={styles.headerSection}>
-                    <Text style={styles.appName}>Dofo</Text>
+                    <Text style={styles.appName}>dofo</Text>
                     <Text style={styles.subtitle}>{t('auth.new_account')}</Text>
                 </View>
 
@@ -415,6 +422,19 @@ export default function SignUpScreen() {
                 {/* Form */}
                 <View style={styles.formSection}>
                     <View style={styles.inputContainer}>
+                        <Ionicons name="person-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Ad Soyad"
+                            placeholderTextColor={colors.textMuted}
+                            value={fullName}
+                            onChangeText={setFullName}
+                            autoCapitalize="words"
+                            autoComplete="name"
+                        />
+                    </View>
+
+                    <View style={styles.inputContainer}>
                         <Ionicons name="mail-outline" size={20} color={colors.textMuted} style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
@@ -461,9 +481,9 @@ export default function SignUpScreen() {
 
 
                     <TouchableOpacity
-                        style={[styles.signInButton, (loading || !email || !password) && styles.signInButtonDisabled]}
+                        style={[styles.signInButton, (loading || !email || !password || !fullName) && styles.signInButtonDisabled]}
                         onPress={onSignUp}
-                        disabled={loading || !email || !password}
+                        disabled={loading || !email || !password || !fullName}
                         activeOpacity={0.8}
                     >
                         {loading ? (

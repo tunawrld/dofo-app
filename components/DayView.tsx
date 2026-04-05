@@ -261,17 +261,18 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
         }
 
         const targetDateKey = format(targetDate, 'yyyy-MM-dd');
+        const todayKey = format(now, 'yyyy-MM-dd');
 
         const existingTasksCount = tasks.filter(t => t.date === targetDateKey).length;
-        const isFirstTask = existingTasksCount === 0;
+        const isFirstTask = existingTasksCount === 0 && targetDateKey === todayKey;
 
         const taskId = addTask(finalTaskText, targetDateKey, 'none');
 
         if (reminderDate && taskId) {
             if (reminderDate > new Date()) {
                 const notifId = await schedulePushNotification(
-                    `Dofo: ${finalTaskText}`,
-                    'Görevin tamamlanmayı bekliyor! 🚀',
+                    `${t('app.notification_title')}: ${finalTaskText}`,
+                    t('app.notification_body'),
                     reminderDate
                 );
                 if (notifId) {
@@ -398,7 +399,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                 />
             )}
             <View style={[styles.titleSection, { zIndex: 10 }]}>
-                {showGoToToday && (
+                {showGoToToday ? (
                     <Pressable
                         style={[styles.goToTodayButton, { flexDirection: isPast ? 'row-reverse' : 'row' }]}
                         onPress={onGoToToday}
@@ -410,25 +411,32 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                         />
                         <Text style={[styles.goToTodayText, { color: C.primary }]}>{t('app.go_to_today')}</Text>
                     </Pressable>
+                ) : (
+                    <View style={styles.logoContainer}>
+                        <Text style={[styles.logoText, { color: C.primary }]}>dofo</Text>
+                    </View>
                 )}
 
                 <Text style={[styles.title, { color: C.textLight }]}>{headerTitle}</Text>
                 <Text style={[styles.dateText, { color: C.textMuted }]}>{dateDisplay}</Text>
 
-                <View style={{ position: 'absolute', right: 24, top: 23, zIndex: 10, alignItems: 'flex-end' }}>
+                <View style={{ position: 'absolute', right: 24, top: 0, bottom: 0, justifyContent: 'center', zIndex: 10, alignItems: 'flex-end' }}>
                     <Pressable
                         onPress={() => {
                             Haptics.selectionAsync();
                             setIsMenuOpen(!isMenuOpen);
                         }}
                         hitSlop={12}
+                        style={{ paddingRight: 8 }}
                     >
                         <Ionicons name={isMenuOpen ? "close" : "menu"} size={28} color={C.textLight} />
                     </Pressable>
 
                     {isMenuOpen && (
                         <View style={{
-                            marginTop: 8,
+                            position: 'absolute',
+                            top: 85,
+                            right: 0,
                             backgroundColor: C.cardBg,
                             borderRadius: 20,
                             padding: 8,
@@ -463,10 +471,10 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
 
                             <Pressable 
                                 onPress={() => { setIsMenuOpen(false); onOpenNotes?.(); }} 
-                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.primary + '20' : C.primary + '10', marginVertical: 2 })}
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
                             >
-                                <Ionicons name="document-text" size={24} color={C.primary} />
-                                <Text style={{ fontSize: 16, fontWeight: '600', color: C.primary }}>{t('app.permanent_notes')}</Text>
+                                <Ionicons name="document-text-outline" size={24} color={C.textLight} />
+                                <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>{t('app.permanent_notes')}</Text>
                             </Pressable>
 
                             {overdueTasks.length > 0 && (
@@ -635,10 +643,15 @@ const styles = StyleSheet.create({
         paddingBottom: 90,
     },
     bottomInputContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         paddingHorizontal: 24,
         paddingTop: 24,
         paddingBottom: 32,
         width: '100%',
+        zIndex: 5,
     },
     inputPlaceholder: {
         alignSelf: 'center',
@@ -656,8 +669,8 @@ const styles = StyleSheet.create({
     },
     inputPlaceholderText: {
         fontSize: 16,
-        fontWeight: '600',
-        letterSpacing: 0.5,
+        fontWeight: '900',
+        letterSpacing: -1,
     },
     inputActive: {
         minHeight: 40,
@@ -683,6 +696,17 @@ const styles = StyleSheet.create({
     goToTodayText: {
         fontSize: 12,
         fontWeight: '600',
+    },
+    logoContainer: {
+        position: 'absolute',
+        left: 24,
+        top: 20,
+        zIndex: 10,
+    },
+    logoText: {
+        fontSize: 24,
+        fontWeight: '900',
+        letterSpacing: -1.5,
     },
     listContentEmpty: {
         flex: 1,

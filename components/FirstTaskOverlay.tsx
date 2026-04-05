@@ -1,7 +1,8 @@
 import Confetti from '@/components/Confetti';
 import { Colors } from '@/constants/Colors';
+import { useTranslation } from '@/lib/i18n';
 import { BlurView } from 'expo-blur';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
     FadeIn,
@@ -19,12 +20,15 @@ interface FirstTaskOverlayProps {
 }
 
 export default function FirstTaskOverlay({ visible, onAnimationFinish }: FirstTaskOverlayProps) {
+    const { t } = useTranslation();
     const scale = useSharedValue(0.5);
     const opacity = useSharedValue(0);
     const rotate = useSharedValue(0);
+    const isAnimating = useRef(false);
 
     useEffect(() => {
-        if (visible) {
+        if (visible && !isAnimating.current) {
+            isAnimating.current = true;
             scale.value = 0.5;
             opacity.value = 0;
             rotate.value = Math.random() * 0.08 - 0.04;
@@ -33,8 +37,9 @@ export default function FirstTaskOverlay({ visible, onAnimationFinish }: FirstTa
             opacity.value = withTiming(1, { duration: 250 });
 
             const timeout = setTimeout(() => {
-                opacity.value = withTiming(0, { duration: 300 }, (finished) => {
-                    if (finished && onAnimationFinish) {
+                opacity.value = withTiming(0, { duration: 300 }, () => {
+                    isAnimating.current = false;
+                    if (onAnimationFinish) {
                         runOnJS(onAnimationFinish)();
                     }
                 });
@@ -42,7 +47,7 @@ export default function FirstTaskOverlay({ visible, onAnimationFinish }: FirstTa
 
             return () => clearTimeout(timeout);
         }
-    }, [visible, scale, opacity, rotate, onAnimationFinish]);
+    }, [visible, onAnimationFinish]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [
@@ -67,10 +72,10 @@ export default function FirstTaskOverlay({ visible, onAnimationFinish }: FirstTa
             <View style={styles.centerContainer}>
                 <Animated.View style={[styles.textContainer, animatedStyle]}>
                     <Text style={[styles.mainText, { color: '#6ee7b7', textShadowColor: '#6ee7b7' }]}>
-                        Harika!
+                        {t('app.first_task_title')}
                     </Text>
                     <Text style={[styles.subText, { color: Colors.white }]}>
-                        İlk adım atıldı
+                        {t('app.first_task_subtitle')}
                     </Text>
                 </Animated.View>
             </View>
@@ -101,14 +106,13 @@ const styles = StyleSheet.create({
     mainText: {
         fontSize: 72,
         fontWeight: '800',
-        // @ts-ignore
         fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-rounded',
         // @ts-ignore
         fontDesign: 'rounded',
         letterSpacing: -2,
         marginBottom: -5,
         textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 20, // Glow effect
+        textShadowRadius: 20,
     },
     subText: {
         fontSize: 26,
@@ -120,3 +124,4 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 });
+

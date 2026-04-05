@@ -236,8 +236,8 @@ export default function HomeScreen() {
 
                     if (isFuture) {
                         const id = await schedulePushNotification(
-                            `Remi: ${taskText}`,
-                            'Görevin tamamlanmayı bekliyor! 🚀',
+                            `${t('app.notification_title')}: ${taskText}`,
+                            t('app.notification_body'),
                             reminderDate
                         );
                         if (id) {
@@ -252,8 +252,8 @@ export default function HomeScreen() {
                     // Date didn't change, but text did, and it's a future reminder -> update notification content
                     await cancelNotification(task.reminderId);
                     const id = await schedulePushNotification(
-                        `Remi: ${taskText}`,
-                        'Görevin tamamlanmayı bekliyor! 🚀',
+                        `${t('app.notification_title')}: ${taskText}`,
+                        t('app.notification_body'),
                         reminderDate
                     );
                     if (id) {
@@ -302,8 +302,8 @@ export default function HomeScreen() {
 
                     if (newReminderDate > new Date()) {
                         const newNotifId = await schedulePushNotification(
-                            `Remi: ${task.text}`,
-                            'Görevin tamamlanmayı bekliyor! 🚀',
+                            `${t('app.notification_title')}: ${task.text}`,
+                            t('app.notification_body'),
                             newReminderDate
                         );
                         if (newNotifId) {

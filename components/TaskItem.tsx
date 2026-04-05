@@ -122,6 +122,7 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
                     onPress={handleToggle}
                     onLongPress={handleLongPress}
                     delayLongPress={500}
+                    hitSlop={12}
                     style={[
                         styles.checkbox,
                         { borderColor: C.textMuted + '50' },
@@ -129,7 +130,7 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
                     ]}
                 >
                     {task.status === 'completed' && (
-                        <Ionicons name="checkmark" size={18} color={C.primary} />
+                        <Ionicons name="checkmark" size={20} color={C.primary} />
                     )}
                 </Pressable>
 
@@ -228,9 +229,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         borderWidth: 1.5,
         marginRight: 16,
         justifyContent: 'center',

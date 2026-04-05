@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/Colors';
+import { useTranslation } from '@/lib/i18n';
 import { BlurView } from 'expo-blur';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
     FadeIn,
@@ -18,49 +19,58 @@ interface ComboOverlayProps {
     onAnimationFinish?: () => void;
 }
 
-const COMBO_DATA = [
-    { text: '', color: Colors.primary }, // 0
-    { text: '', color: Colors.primary }, // 1
-    { text: 'Güzel!', color: '#6ee7b7' }, // 2
-    { text: 'Süper!', color: '#93c5fd' }, // 3
-    { text: 'Harika!', color: '#c4b5fd' }, // 4
-    { text: 'Müthiş!', color: '#fcd34d' }, // 5
-    { text: 'Efsane!', color: '#f87171' }, // 6
-];
-
 export default function ComboOverlay({ count, visible, onAnimationFinish }: ComboOverlayProps) {
-    const [currentCombo, setCurrentCombo] = useState(COMBO_DATA[2]);
+    const { t } = useTranslation();
+    const [localCount, setLocalCount] = useState(count);
     const scale = useSharedValue(0.5);
     const opacity = useSharedValue(0);
     const rotate = useSharedValue(0);
 
+    // Derived data based on current count
+    const getComboData = (c: number) => {
+        const index = Math.min(c, 6);
+        const colors = [
+            Colors.primary, // 0
+            Colors.primary, // 1
+            '#6ee7b7',      // 2
+            '#93c5fd',      // 3
+            '#c4b5fd',      // 4
+            '#fcd34d',      // 5
+            '#f87171',      // 6
+        ];
+        return {
+            text: index >= 2 ? t(`app.combo_${index}`) : '',
+            color: colors[index] || Colors.primary
+        };
+    };
+
+    const currentCombo = getComboData(localCount);
+
     useEffect(() => {
-        if (visible && count > 1) {
-            // Data Setup
-            const dataIndex = Math.min(count, COMBO_DATA.length - 1);
-            setCurrentCombo(COMBO_DATA[dataIndex]);
+        if (visible && count >= 2) {
+            setLocalCount(count);
 
-            // Animation Reset
+            // Pop Animation
             scale.value = 0.5;
-            opacity.value = 0;
-            rotate.value = Math.random() * 0.1 - 0.05; // Gentle random tilt
-
-            // Animate In (Bouncy & Cute)
+            rotate.value = Math.random() * 0.1 - 0.05;
+            
             scale.value = withSpring(1.0, { damping: 8, stiffness: 150 });
-            opacity.value = withTiming(1, { duration: 150 });
+            opacity.value = withTiming(1, { duration: 100 });
 
-            // Auto Hide
+            // Auto Hide (Reset every time a new combo comes in)
             const timeout = setTimeout(() => {
-                opacity.value = withTiming(0, { duration: 300 }, (finished) => {
-                    if (finished && onAnimationFinish) {
+                opacity.value = withTiming(0, { duration: 300 }, () => {
+                    if (onAnimationFinish) {
                         runOnJS(onAnimationFinish)();
                     }
                 });
-            }, 800);
+            }, 1000);
 
-            return () => clearTimeout(timeout);
+            return () => {
+                clearTimeout(timeout);
+            };
         }
-    }, [count, visible]);
+    }, [visible, count]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [
@@ -70,24 +80,14 @@ export default function ComboOverlay({ count, visible, onAnimationFinish }: Comb
         opacity: opacity.value,
     }));
 
-    if (!visible || count < 2) return null;
+    if (!visible || localCount < 2) return null;
 
     return (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            {/* Full Screen Blur Background */}
-            <Animated.View
-                entering={FadeIn.duration(200)}
-                exiting={FadeOut.duration(200)}
-                style={StyleSheet.absoluteFill}
-            >
-                <BlurView intensity={15} tint="dark" style={StyleSheet.absoluteFill} />
-            </Animated.View>
-
-            {/* Centered Combo Text */}
             <View style={styles.centerContainer}>
                 <Animated.View style={[styles.textContainer, animatedStyle]}>
                     <Text style={[styles.comboCount, { color: currentCombo.color, textShadowColor: currentCombo.color }]}>
-                        {count}x
+                        {localCount}x
                     </Text>
                     <Text style={[styles.comboText, { color: Colors.white }]}>
                         {currentCombo.text}
@@ -113,14 +113,13 @@ const styles = StyleSheet.create({
     comboCount: {
         fontSize: 90,
         fontWeight: '800',
-        // @ts-ignore: 'rounded' is a valid value for system font on iOS but typescript definition might lag strictly
         fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-rounded',
         // @ts-ignore
-        fontDesign: 'rounded', // This makes it look "cute" on iOS 13+
+        fontDesign: 'rounded',
         letterSpacing: -2,
         marginBottom: -10,
         textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 15, // Soft glow
+        textShadowRadius: 15,
     },
     comboText: {
         fontSize: 32,
@@ -129,6 +128,7 @@ const styles = StyleSheet.create({
         // @ts-ignore
         fontDesign: 'rounded',
         opacity: 0.95,
-        textTransform: 'capitalize', // "Harika" instead of "HARİKA"
+        textTransform: 'capitalize',
     },
 });
+
