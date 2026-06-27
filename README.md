@@ -1,50 +1,27 @@
-# Welcome to your Expo app 👋
+# dofo 🚀
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+dofo, sade ve disiplinli bir günlük planlama uygulamasıdır. "Zaman akıp gidiyor, mazeretlere yer yok" felsefesiyle tasarlanan dofo, hedeflerinize ruthlessly (acımasızca) odaklanmanızı sağlar.
 
-## Get started
+## Özellikler
+*   📅 **Günlük Planlama:** Günlük işlerinizi sıralayın, sürükleyip bırakarak önceliklendirin.
+*   ✏️ **Profil Özelleştirme:** Kolayca isminizi düzenleyin (dinamik çoklu dil destekli).
+*   🔔 **Akıllı Hatırlatıcılar:** Önemli hiçbir işi unutmayın, bildirim izin kontrolleriyle güvenli alarm kurun.
+*   ⏳ **Geciken Görevler:** Dünden kalan işlerinizi tek dokunuşla bugüne taşıyın.
+*   💾 **Tamamen Çevrimdışı (Local Storage):** Verileriniz güvenle sadece cihazınızda saklanır.
+*   🌎 **Çoklu Dil Desteği:** Türkçe, İngilizce, Almanca, Fransızca ve İspanyolca desteklenir.
 
-1. Install dependencies
+## Kurulum ve Başlangıç
 
+1. Bağımlılıkları yükleyin:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+2. Uygulamayı Expo üzerinde başlatın:
    ```bash
-   npx expo start
+   npm run start
    ```
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+3. Geliştirme cihazınızda test edin:
+   * iOS Simulator veya Android Emulator kullanın.
+   * Fiziksel cihazınızda **Expo Go** uygulamasını açarak QR kodu taratın.
