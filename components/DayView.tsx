@@ -1,17 +1,21 @@
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useTranslation } from '@/lib/i18n';
 import { useTaskStore } from '@/store/taskStore';
+import { usePremiumStore } from '@/store/premiumStore';
 import { Task } from '@/types';
 import { cancelNotification, schedulePushNotification } from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { addDays, addMonths, addWeeks, addYears, differenceInCalendarDays, format, isToday, isTomorrow, isYesterday, setHours, setMinutes } from 'date-fns';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import OverdueModal from './OverdueModal';
+import OverdueModal from '@/components/OverdueModal';
+import { Colors } from '@/constants/Colors';
 import TaskItem from './TaskItem';
 
 interface DayViewProps {
@@ -26,9 +30,12 @@ interface DayViewProps {
     onFirstTaskAdded?: () => void;
 }
 
+const DAILY_FREE_TASK_LIMIT = 5;
+
 function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNotes, onOpenProfile, onTaskComplete, onDeleteTask, onFirstTaskAdded }: DayViewProps) {
     const C = useThemeColors();
     const { t, formatDate } = useTranslation();
+    const router = useRouter();
     const dateKey = format(date, 'yyyy-MM-dd');
     const tasks = useTaskStore((state) => state.tasks);
     const addTask = useTaskStore((state) => state.addTask);
@@ -40,6 +47,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
     const restoreLastDeletedTask = useTaskStore((state) => state.restoreLastDeletedTask);
     const reorderTasks = useTaskStore((state) => state.reorderTasks);
     const insets = useSafeAreaInsets();
+    const isPremium = usePremiumStore((state) => state.isPremium);
 
     const [showOverdueModal, setShowOverdueModal] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -137,6 +145,23 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
         if (!newTaskText.trim()) {
             setNewTaskText('');
             return;
+        }
+
+        // Check daily task limit for free users
+        if (!isPremium) {
+            const todayTaskCount = tasks.filter(t => t.date === dateKey).length;
+            if (todayTaskCount >= DAILY_FREE_TASK_LIMIT) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                Alert.alert(
+                    t('premium.task_limit_title'),
+                    t('premium.task_limit_msg'),
+                    [
+                        { text: t('profile.cancel'), style: 'cancel' },
+                        { text: t('premium.upgrade'), onPress: () => router.push('/premium') },
+                    ]
+                );
+                return;
+            }
         }
 
         const originalText = newTaskText.trim();
@@ -297,8 +322,20 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
     };
 
     const handleLongPress = useCallback((id: string, y?: number) => {
+        if (!isPremium) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            Alert.alert(
+                t('premium.reminder_title'),
+                t('premium.reminder_msg'),
+                [
+                    { text: t('profile.cancel'), style: 'cancel' },
+                    { text: t('premium.upgrade'), onPress: () => router.push('/premium') },
+                ]
+            );
+            return;
+        }
         onOpenReminder(id, y);
-    }, [onOpenReminder]);
+    }, [onOpenReminder, isPremium, router, t]);
 
     const handleEditStart = useCallback((taskId: string) => {
         setIsAnyTaskEditing(true);
@@ -392,13 +429,14 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
         >
-            {isMenuOpen && (
-                <Pressable 
-                    style={[StyleSheet.absoluteFill, { zIndex: 9 }]} 
-                    onPress={() => setIsMenuOpen(false)} 
-                />
-            )}
-            <View style={[styles.titleSection, { zIndex: 10 }]}>
+            <View style={{ flex: 1 }}>
+                {isMenuOpen && (
+                    <Pressable 
+                        style={[StyleSheet.absoluteFill, { zIndex: 9 }]} 
+                        onPress={() => setIsMenuOpen(false)} 
+                    />
+                )}
+                <View style={[styles.titleSection, { zIndex: 10 }]}>
                 {showGoToToday ? (
                     <Pressable
                         style={[styles.goToTodayButton, { flexDirection: isPast ? 'row-reverse' : 'row' }]}
@@ -423,7 +461,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                 <View style={{ position: 'absolute', right: 24, top: 0, bottom: 0, justifyContent: 'center', zIndex: 10, alignItems: 'flex-end' }}>
                     <Pressable
                         onPress={() => {
-                            Haptics.selectionAsync();
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setIsMenuOpen(!isMenuOpen);
                         }}
                         hitSlop={12}
@@ -450,8 +488,11 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                             minWidth: 200,
                         }}>
                             <Pressable 
-                                onPress={() => { setIsMenuOpen(false); onOpenProfile?.(); }} 
-                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
+                                onPress={() => { 
+                                    Haptics.selectionAsync();
+                                    setIsMenuOpen(false); onOpenProfile?.(); 
+                                }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent', transform: [{ scale: pressed ? 0.97 : 1 }] })}
                             >
                                 <Ionicons name="person-circle-outline" size={24} color={C.textLight} />
                                 <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>{t('profile.title')}</Text>
@@ -460,8 +501,11 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                             <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
 
                             <Pressable 
-                                onPress={() => { setIsMenuOpen(false); onOpenCalendar?.(); }} 
-                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
+                                onPress={() => { 
+                                    Haptics.selectionAsync();
+                                    setIsMenuOpen(false); onOpenCalendar?.(); 
+                                }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent', transform: [{ scale: pressed ? 0.97 : 1 }] })}
                             >
                                 <Ionicons name="calendar-outline" size={24} color={C.textLight} />
                                 <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>{t('app.calendar')}</Text>
@@ -470,19 +514,46 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                             <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
 
                             <Pressable 
-                                onPress={() => { setIsMenuOpen(false); onOpenNotes?.(); }} 
-                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent' })}
+                                onPress={() => { 
+                                    Haptics.selectionAsync();
+                                    setIsMenuOpen(false); onOpenNotes?.(); 
+                                }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.border + '08' : 'transparent', transform: [{ scale: pressed ? 0.97 : 1 }] })}
                             >
                                 <Ionicons name="document-text-outline" size={24} color={C.textLight} />
                                 <Text style={{ fontSize: 16, fontWeight: '500', color: C.textLight }}>{t('app.permanent_notes')}</Text>
+                            </Pressable>
+
+                            <View style={{ height: 1, backgroundColor: C.border + '10', marginLeft: 50, marginVertical: 4 }} />
+
+                            <Pressable 
+                                onPress={() => { 
+                                    Haptics.selectionAsync();
+                                    setIsMenuOpen(false);
+                                    router.push('/premium');
+                                }} 
+                                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.primary + '15' : 'transparent', transform: [{ scale: pressed ? 0.97 : 1 }] })}
+                            >
+                                <Ionicons name="diamond-outline" size={24} color={isPremium ? C.primary : C.textLight} />
+                                <Text style={{ fontSize: 16, fontWeight: '600', color: isPremium ? C.primary : C.textLight }}>
+                                    {isPremium ? t('premium.already_premium') : t('premium.go_premium')}
+                                </Text>
+                                {!isPremium && (
+                                    <View style={{ marginLeft: 'auto', backgroundColor: C.primary + '20', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: C.primary + '40' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: C.primary }}>{t('premium.free_badge')}</Text>
+                                    </View>
+                                )}
                             </Pressable>
 
                             {overdueTasks.length > 0 && (
                                 <>
                                     <View style={{ height: 1, backgroundColor: C.border + '10', marginHorizontal: 8, marginVertical: 6 }} />
                                     <Pressable 
-                                        onPress={() => { setIsMenuOpen(false); setShowOverdueModal(true); }} 
-                                        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.red + '15' : 'transparent' })}
+                                        onPress={() => { 
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                            setIsMenuOpen(false); setShowOverdueModal(true); 
+                                        }} 
+                                        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 14, borderRadius: 12, backgroundColor: pressed ? C.red + '15' : 'transparent', transform: [{ scale: pressed ? 0.97 : 1 }] })}
                                     >
                                         <Ionicons name="time" size={24} color={C.red || '#FF3B30'} />
                                         <Text style={{ fontSize: 16, fontWeight: '600', color: C.red || '#FF3B30' }}>
@@ -494,9 +565,8 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                         </View>
                     )}
                 </View>
-            </View>
+                </View>
 
-            <View style={{ flex: 1 }}>
                 <DraggableFlatList
                     ref={flatListRef}
                     data={dayTasks}
@@ -523,7 +593,7 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                     }}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Ionicons name="sparkles-outline" size={48} color={C.textMuted + '40'} />
+                            <Ionicons name="checkmark-outline" size={48} color={C.textMuted + '40'} />
                             <Text style={[styles.emptyText, { color: C.textMuted }]}>{t('app.no_plan')}</Text>
                         </View>
                     }
@@ -538,76 +608,91 @@ function DayView({ date, onOpenReminder, onGoToToday, onOpenCalendar, onOpenNote
                     style={styles.bottomGradient}
                     pointerEvents="none"
                 />
-            </View>
 
-            <Animated.View
-                style={[
-                    styles.bottomInputContainer,
-                    {
-                        opacity: inputOpacity,
-                        transform: [{ translateY: inputTranslateY }],
-                        paddingBottom: isInputFocused ? 0 : (insets.bottom || 24),
-                    }
-                ]}
-                pointerEvents={isAnyTaskEditing ? 'none' : 'auto'}
-            >
-                {!isInputFocused && newTaskText.length === 0 ? (
-                    <Pressable
-                        style={[
-                            styles.inputPlaceholder,
-                            {
-                                backgroundColor: C.primary + '18',
-                                borderColor: C.primary + '60',
-                                shadowColor: C.primary,
-                            }
-                        ]}
-                        onPress={() => setIsInputFocused(true)}
-                    >
-                        <Ionicons name="add-circle" size={22} color={C.primary} />
-                        <Text style={[styles.inputPlaceholderText, { color: C.primary }]}>{t('app.write_to_dofo')}</Text>
-                    </Pressable>
-                ) : (
-                    <View style={[
-                        styles.inputActive,
+                <Animated.View
+                    style={[
+                        styles.bottomInputContainer,
                         {
-                            backgroundColor: C.primary + '10',
-                            borderColor: C.primary + '40',
+                            opacity: isAnyTaskEditing ? 0 : inputOpacity,
+                            transform: [{ translateY: inputTranslateY }],
+                            paddingBottom: isInputFocused ? 8 : Math.max(insets.bottom, 20),
                         }
-                    ]}>
-                        <TextInput
-                            style={[styles.input, { color: C.textLight }]}
-                            placeholder={t('app.write_to_dofo')}
-                            placeholderTextColor={C.textMuted + '80'}
-                            value={newTaskText}
-                            onChangeText={setNewTaskText}
-                            onSubmitEditing={handleAddTask}
-                            onFocus={() => setIsInputFocused(true)}
-                            onBlur={() => {
-                                if (newTaskText.trim().length === 0) {
-                                    setIsInputFocused(false);
-                                    setNewTaskText('');
+                    ]}
+                    pointerEvents={isAnyTaskEditing ? 'none' : 'auto'}
+                >
+                    {/* Smooth gradient fade — content dissolves upward into the button */}
+                    <LinearGradient
+                        colors={[C.backgroundDark + '00', C.backgroundDark, C.backgroundDark]}
+                        locations={[0, 0.4, 1]}
+                        style={StyleSheet.absoluteFill}
+                        pointerEvents="none"
+                    />
+                    {!isInputFocused && newTaskText.length === 0 ? (
+                        <Pressable
+                            style={[
+                                styles.inputPlaceholder,
+                                {
+                                    backgroundColor: C.primary + '18',
+                                    borderColor: C.primary + '60',
+                                    shadowColor: C.primary,
+                                    overflow: 'hidden',
                                 }
-                            }}
-                            returnKeyType="done"
-                            autoFocus={isInputFocused}
-                        />
-                    </View>
-                )}
-            </Animated.View>
+                            ]}
+                            onPressIn={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                            onPress={() => setIsInputFocused(true)}
+                        >
+                            <BlurView
+                                intensity={Platform.OS === 'ios' ? 20 : 0}
+                                tint="dark"
+                                style={StyleSheet.absoluteFill}
+                            />
+                            <Ionicons name="add-circle" size={22} color={C.primary} />
+                            <Text style={[styles.inputPlaceholderText, { color: C.primary }]}>{t('app.write_to_dofo')}</Text>
+                        </Pressable>
+                    ) : (
+                        <View style={[
+                            styles.inputActive,
+                            {
+                                backgroundColor: C.primary + '10',
+                                borderColor: C.primary + '40',
+                            }
+                        ]}>
+                            <TextInput
+                                style={[styles.input, { color: C.textLight }]}
+                                placeholder={t('app.write_to_dofo')}
+                                placeholderTextColor={C.textMuted + '80'}
+                                value={newTaskText}
+                                onChangeText={setNewTaskText}
+                                onSubmitEditing={handleAddTask}
+                                onFocus={() => setIsInputFocused(true)}
+                                onBlur={() => {
+                                    if (newTaskText.trim().length === 0) {
+                                        setIsInputFocused(false);
+                                        setNewTaskText('');
+                                    }
+                                }}
+                                returnKeyType="done"
+                                autoFocus={isInputFocused}
+                            />
+                        </View>
+                    )}
+                </Animated.View>
 
-            <OverdueModal
-                visible={showOverdueModal}
-                tasks={overdueTasks}
-                onClose={() => setShowOverdueModal(false)}
-                onMoveAllToToday={handleMoveOverdueToToday}
-                onToggleTask={handleToggleTask}
-                onDeleteTask={handleDeleteWithUndo}
-            />
+                <OverdueModal
+                    visible={showOverdueModal}
+                    tasks={overdueTasks}
+                    onClose={() => setShowOverdueModal(false)}
+                    onMoveAllToToday={handleMoveOverdueToToday}
+                    onToggleTask={handleToggleTask}
+                    onDeleteTask={handleDeleteWithUndo}
+                />
+            </View>
         </KeyboardAvoidingView>
     );
 }
 
 export default React.memo(DayView);
+
 
 const styles = StyleSheet.create({
     container: {
@@ -648,10 +733,11 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         paddingHorizontal: 24,
-        paddingTop: 24,
+        paddingTop: 32,
         paddingBottom: 32,
         width: '100%',
         zIndex: 5,
+        backgroundColor: 'transparent',
     },
     inputPlaceholder: {
         alignSelf: 'center',
@@ -717,7 +803,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         opacity: 0.8,
-        transform: [{ translateY: -40 }],
+        transform: [{ translateY: -80 }],
     },
     emptyText: {
         fontSize: 16,

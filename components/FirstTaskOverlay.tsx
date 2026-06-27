@@ -1,7 +1,7 @@
 import Confetti from '@/components/Confetti';
 import { Colors } from '@/constants/Colors';
 import { useTranslation } from '@/lib/i18n';
-import { BlurView } from 'expo-blur';
+
 import React, { useEffect, useRef } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -61,13 +61,7 @@ export default function FirstTaskOverlay({ visible, onAnimationFinish }: FirstTa
 
     return (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <Animated.View
-                entering={FadeIn.duration(200)}
-                exiting={FadeOut.duration(300)}
-                style={StyleSheet.absoluteFill}
-            >
-                <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-            </Animated.View>
+            <View style={StyleSheet.absoluteFill} pointerEvents="none" />
 
             <View style={styles.centerContainer}>
                 <Animated.View style={[styles.textContainer, animatedStyle]}>

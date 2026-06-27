@@ -11,10 +11,12 @@ export const useNotesStore = create<PermanentNotesState>()(
     persist(
         (set) => ({
             note: '',
-            setNote: (text) => set({ note: text }),
+            setNote: (text: string) => {
+                set({ note: text });
+            },
         }),
         {
-            name: 'unutma-permanent-notes',
+            name: 'dofo-permanent-notes',
             storage: createJSONStorage(() => scopedStorage),
             merge: (persistedState: any, currentState: any) => {
                 if (!persistedState) return { ...currentState, note: '' };

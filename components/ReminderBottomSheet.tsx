@@ -6,7 +6,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { addDays, addHours, format, isToday, isTomorrow, setHours, setMinutes } from 'date-fns';
 import * as Haptics from 'expo-haptics';
 import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { registerForPushNotificationsAsync } from '@/utils/notifications';
 
 interface ReminderBottomSheetProps {
     taskText: string;
@@ -15,7 +16,7 @@ interface ReminderBottomSheetProps {
     onSave: (date: Date, text: string) => void;
     onCancel: () => void;
     onDelete?: () => void;
-    onMoveToTomorrow?: () => void;
+    onMoveToTomorrow?: (currentDate: Date, text: string) => void;
     onRemoveReminder?: () => void;
     onSheetChange?: (index: number) => void;
 }
@@ -23,8 +24,9 @@ interface ReminderBottomSheetProps {
 const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
     ({ taskText, onSave, onCancel, isOpen, existingDate, onMoveToTomorrow, onDelete, onRemoveReminder, onSheetChange }, ref) => {
         const C = useThemeColors();
-        const { t, formatDate } = useTranslation();
+        const { t, formatDate, locale } = useTranslation();
         const colorScheme = useColorScheme();
+        const bcp47Locale: Record<string, string> = { en: 'en-US', tr: 'tr-TR', es: 'es-ES', de: 'de-DE', fr: 'fr-FR' };
         const [snapPoints, setSnapPoints] = useState(['65%']);
         const [selectedDate, setSelectedDate] = useState(new Date());
         const [taskInputText, setTaskInputText] = useState(taskText);
@@ -76,15 +78,33 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
             };
         }, []);
 
-        const handleSave = () => {
+        const handleSave = async () => {
+            const hasPermission = await registerForPushNotificationsAsync();
+            if (!hasPermission) {
+                Alert.alert(
+                    t('auth.warning') || 'Warning',
+                    locale === 'tr' 
+                        ? 'Bildirim izinleri devre dışı olduğu için hatırlatıcılar çalışmayacaktır. Lütfen cihaz ayarlarından bildirimleri etkinleştirin.' 
+                        : 'Notifications are disabled, so reminders will not work. Please enable notifications in device settings.'
+                );
+            }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             onSave(selectedDate, taskInputText);
         };
 
-        const handleMoveToTomorrow = () => {
+        const handleMoveToTomorrow = async () => {
+            const hasPermission = await registerForPushNotificationsAsync();
+            if (!hasPermission) {
+                Alert.alert(
+                    t('auth.warning') || 'Warning',
+                    locale === 'tr' 
+                        ? 'Bildirim izinleri devre dışı olduğu için hatırlatıcılar çalışmayacaktır. Lütfen cihaz ayarlarından bildirimleri etkinleştirin.' 
+                        : 'Notifications are disabled, so reminders will not work. Please enable notifications in device settings.'
+                );
+            }
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             if (onMoveToTomorrow) {
-                onMoveToTomorrow();
+                onMoveToTomorrow(selectedDate, taskInputText);
             }
         };
 
@@ -99,11 +119,25 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
         };
 
         const handleDateChange = (event: any, date?: Date) => {
+            const currentMode = activePickerMode;
             if (Platform.OS === 'android') {
                 setActivePickerMode(null);
             }
             if (date) {
-                setSelectedDate(date);
+                setSelectedDate(current => {
+                    const newDate = new Date(current);
+                    if (currentMode === 'date') {
+                        newDate.setFullYear(date.getFullYear());
+                        newDate.setMonth(date.getMonth());
+                        newDate.setDate(date.getDate());
+                    } else if (currentMode === 'time') {
+                        newDate.setHours(date.getHours());
+                        newDate.setMinutes(date.getMinutes());
+                    } else {
+                        return date;
+                    }
+                    return newDate;
+                });
             }
         };
 
@@ -212,7 +246,7 @@ const ReminderBottomSheet = forwardRef<BottomSheet, ReminderBottomSheetProps>(
                                     onChange={handleDateChange}
                                     textColor={C.textLight}
                                     themeVariant={colorScheme === 'dark' ? 'dark' : 'light'}
-                                    locale="tr-TR"
+                                    locale={bcp47Locale[locale] || 'en-US'}
                                     style={styles.dateTimePicker}
                                     minimumDate={new Date(new Date().getFullYear() - 1, 0, 1)}
                                     maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}

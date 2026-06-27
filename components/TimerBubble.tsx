@@ -34,7 +34,8 @@ export default function TimerBubble({
     onCancel,
     onDelete
 }: TimerBubbleProps) {
-    const { t, formatDate } = useTranslation();
+    const { t, formatDate, locale } = useTranslation();
+    const bcp47Locale: Record<string, string> = { en: 'en-US', tr: 'tr-TR', es: 'es-ES', de: 'de-DE', fr: 'fr-FR' };
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [showPicker, setShowPicker] = useState(false);
     const [pickerMode, setPickerMode] = useState<'date' | 'time'>('time');
@@ -154,7 +155,7 @@ export default function TimerBubble({
                                 }}
                                 textColor={Colors.white}
                                 themeVariant="dark"
-                                locale="tr-TR"
+                                locale={bcp47Locale[locale] || 'en-US'}
                                 style={{ height: 120 }}
                                 minimumDate={new Date(new Date().getFullYear() - 1, 0, 1)}
                                 maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}

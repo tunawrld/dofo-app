@@ -1,5 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { i18n } from '@/lib/i18n';
+
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -59,6 +61,7 @@ export async function cancelNotification(id: string) {
 
 export async function manageDailyMotivationalReminder(hasPendingTasks: boolean) {
     const IDENTIFIER = 'daily-motivational';
+    const t = (key: string) => i18n.t(key);
 
     if (hasPendingTasks) {
         const now = new Date();
@@ -66,12 +69,11 @@ export async function manageDailyMotivationalReminder(hasPendingTasks: boolean) 
         triggerDate.setHours(19, 0, 0, 0); // 19:00
 
         if (triggerDate.getTime() > now.getTime()) {
-            // Check if already scheduled today to avoid re-scheduling continuously (though using same IDENTIFIER overwrites)
             await Notifications.scheduleNotificationAsync({
                 identifier: IDENTIFIER,
                 content: {
-                    title: "Bugünü harika bitirmeye ne dersin? 🌟",
-                    body: "Birkaç görevin kalmış, hemen hallet ve rahatla! 💪",
+                    title: t('premium.daily_notif_title'),
+                    body: t('premium.daily_notif_body'),
                     sound: 'default',
                 },
                 trigger: {
@@ -87,6 +89,7 @@ export async function manageDailyMotivationalReminder(hasPendingTasks: boolean) 
 
 export async function manageWeeklyPlanningReminder() {
     const IDENTIFIER = 'weekly-planning';
+    const t = (key: string) => i18n.t(key);
 
     // Check if already scheduled to avoid duplicates/overwrite calls unnecessarily
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -96,8 +99,8 @@ export async function manageWeeklyPlanningReminder() {
         await Notifications.scheduleNotificationAsync({
             identifier: IDENTIFIER,
             content: {
-                title: "Haftanı planlamaya hazır mısın? 📅",
-                body: "Yeni bir hafta başlıyor! Hedeflerini belirle ve harika bir hafta geçir. 🚀",
+                title: t('premium.weekly_notif_title'),
+                body: t('premium.weekly_notif_body'),
                 sound: 'default',
             },
             trigger: {

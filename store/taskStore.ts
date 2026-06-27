@@ -24,9 +24,9 @@ export const useTaskStore = create<TaskState>()(
         (set) => ({
             tasks: [],
             lastDeletedTask: null,
-            addTask: (text, date, category = 'none') => {
+            addTask: (text: string, date: string, category: TaskCategory = 'none') => {
                 const id = uuidv4();
-                set((state) => ({
+                set((state: TaskState) => ({
                     tasks: [
                         ...state.tasks,
                         {
@@ -42,77 +42,77 @@ export const useTaskStore = create<TaskState>()(
                 }));
                 return id;
             },
-            toggleTask: (id) =>
-                set((state) => {
-                    const taskIndex = state.tasks.findIndex((t) => t.id === id);
+            toggleTask: (id: string) =>
+                set((state: TaskState) => {
+                    const taskIndex = state.tasks.findIndex((t: Task) => t.id === id);
                     if (taskIndex === -1) return { tasks: state.tasks };
 
                     const task = state.tasks[taskIndex];
                     const newStatus = task.status === 'pending' ? 'completed' : 'pending';
-                    let newTasks = [...state.tasks];
+                    const newTasks = [...state.tasks];
 
                     // Update status
                     newTasks[taskIndex] = { ...task, status: newStatus };
 
                     return { tasks: newTasks };
                 }),
-            deleteTask: (id) =>
-                set((state) => {
-                    const taskToDelete = state.tasks.find((t) => t.id === id);
+            deleteTask: (id: string) =>
+                set((state: TaskState) => {
+                    const taskToDelete = state.tasks.find((t: Task) => t.id === id);
                     if (!taskToDelete) return {};
                     return {
-                        tasks: state.tasks.filter((task) => task.id !== id),
+                        tasks: state.tasks.filter((task: Task) => task.id !== id),
                         lastDeletedTask: taskToDelete,
                     };
                 }),
             restoreLastDeletedTask: () =>
-                set((state) => {
+                set((state: TaskState) => {
                     if (!state.lastDeletedTask) return {};
                     return {
                         tasks: [...state.tasks, state.lastDeletedTask],
                         lastDeletedTask: null,
                     };
                 }),
-            updateTask: (id, text) =>
-                set((state) => ({
-                    tasks: state.tasks.map((task) =>
+            updateTask: (id: string, text: string) =>
+                set((state: TaskState) => ({
+                    tasks: state.tasks.map((task: Task) =>
                         task.id === id ? { ...task, text } : task
                     ),
                 })),
-            setReminderId: (id, reminderId, reminderDate) =>
-                set((state) => ({
-                    tasks: state.tasks.map((task) =>
+            setReminderId: (id: string, reminderId: string | undefined, reminderDate: number | undefined) =>
+                set((state: TaskState) => ({
+                    tasks: state.tasks.map((task: Task) =>
                         task.id === id ? { ...task, reminderId, reminderDate } : task
                     ),
                 })),
-            updateCategory: (id, category) =>
-                set((state) => ({
-                    tasks: state.tasks.map((task) =>
+            updateCategory: (id: string, category: TaskCategory) =>
+                set((state: TaskState) => ({
+                    tasks: state.tasks.map((task: Task) =>
                         task.id === id ? { ...task, category } : task
                     ),
                 })),
 
-            moveTaskToDate: (id, newDate) =>
-                set((state) => ({
-                    tasks: state.tasks.map((task) =>
+            moveTaskToDate: (id: string, newDate: string) =>
+                set((state: TaskState) => ({
+                    tasks: state.tasks.map((task: Task) =>
                         task.id === id ? { ...task, date: newDate } : task
                     ),
                 })),
-            reorderTasks: (date, orderedTasks) =>
-                set((state) => {
+            reorderTasks: (date: string, orderedTasks: Task[]) =>
+                set((state: TaskState) => {
                     // Assign sequential order values — do NOT touch createdAt
-                    const updatedOrderedTasks = orderedTasks.map((task, index) => ({
+                    const updatedOrderedTasks = orderedTasks.map((task: Task, index: number) => ({
                         ...task,
                         order: index,
                     }));
-                    const otherTasks = state.tasks.filter((t) => t.date !== date);
+                    const otherTasks = state.tasks.filter((t: Task) => t.date !== date);
                     return {
                         tasks: [...otherTasks, ...updatedOrderedTasks],
                     };
                 }),
         }),
         {
-            name: 'unutma-storage',
+            name: 'dofo-storage',
             storage: createJSONStorage(() => scopedStorage),
             merge: (persistedState: any, currentState: any) => {
                 if (!persistedState) return { ...currentState, tasks: [], lastDeletedTask: null };

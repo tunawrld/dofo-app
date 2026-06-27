@@ -16,7 +16,7 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Alert, Animated, AppState, Modal, Platform, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,7 +30,8 @@ const PagerView = Platform.OS === 'web'
 export default function HomeScreen() {
     const C = useThemeColors();
     const router = useRouter();
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
+    const bcp47Locale: Record<string, string> = { en: 'en-US', tr: 'tr-TR', es: 'es-ES', de: 'de-DE', fr: 'fr-FR' };
     const colorScheme = useColorScheme();
     const [initialDate] = useState(new Date());
     const initialPage = 1000;
@@ -229,6 +230,11 @@ export default function HomeScreen() {
                 const textChanged = taskText !== task.text;
                 const isFuture = reminderDate.getTime() > Date.now();
 
+                const newDateKey = format(reminderDate, 'yyyy-MM-dd');
+                if (newDateKey !== task.date) {
+                    moveTaskToDate(selectedTaskId, newDateKey);
+                }
+
                 if (dateChanged) {
                     if (task.reminderId) {
                         await cancelNotification(task.reminderId);
@@ -246,7 +252,7 @@ export default function HomeScreen() {
                         }
                     } else {
                         // Only alert if the user effectively changed the date to the past (or left it as default 'now')
-                        alert("Cannot schedule reminder in the past!");
+                        Alert.alert(t('auth.warning'), t('premium.past_reminder_error'));
                     }
                 } else if (textChanged && isFuture && task.reminderId) {
                     // Date didn't change, but text did, and it's a future reminder -> update notification content
@@ -284,31 +290,38 @@ export default function HomeScreen() {
         setIsSheetOpen(false);
     };
 
-    const handleMoveToTomorrow = async () => {
+    const handleMoveToTomorrow = async (currentDate: Date, taskText: string) => {
         if (selectedTaskId) {
             const task = tasks.find(t => t.id === selectedTaskId);
             if (task) {
+                if (taskText !== task.text) {
+                    updateTask(selectedTaskId, taskText);
+                }
+
                 const currentTaskDate = new Date(task.date);
                 const tomorrowDate = addDays(currentTaskDate, 1);
                 const tomorrowDateKey = format(tomorrowDate, 'yyyy-MM-dd');
 
                 moveTaskToDate(selectedTaskId, tomorrowDateKey);
 
-                if (task.reminderId && task.reminderDate) {
+                const finalReminderDate = new Date(tomorrowDate);
+                finalReminderDate.setHours(currentDate.getHours());
+                finalReminderDate.setMinutes(currentDate.getMinutes());
+                finalReminderDate.setSeconds(0);
+                finalReminderDate.setMilliseconds(0);
+
+                if (task.reminderId) {
                     await cancelNotification(task.reminderId);
+                }
 
-                    const oldReminderDate = new Date(task.reminderDate);
-                    const newReminderDate = addDays(oldReminderDate, 1);
-
-                    if (newReminderDate > new Date()) {
-                        const newNotifId = await schedulePushNotification(
-                            `${t('app.notification_title')}: ${task.text}`,
-                            t('app.notification_body'),
-                            newReminderDate
-                        );
-                        if (newNotifId) {
-                            setReminderId(selectedTaskId, newNotifId, newReminderDate.getTime());
-                        }
+                if (finalReminderDate > new Date()) {
+                    const newNotifId = await schedulePushNotification(
+                        `${t('app.notification_title')}: ${taskText}`,
+                        t('app.notification_body'),
+                        finalReminderDate
+                    );
+                    if (newNotifId) {
+                        setReminderId(selectedTaskId, newNotifId, finalReminderDate.getTime());
                     }
                 }
 
@@ -424,7 +437,7 @@ export default function HomeScreen() {
                                             textColor={C.textLight}
                                             accentColor={C.primary}
                                             themeVariant={colorScheme === 'dark' ? 'dark' : 'light'}
-                                            locale="tr-TR"
+                                            locale={bcp47Locale[locale] || 'en-US'}
                                             minimumDate={new Date(new Date().getFullYear() - 1, 0, 1)}
                                             maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
                                         />
@@ -448,7 +461,7 @@ export default function HomeScreen() {
                             mode="date"
                             display="default"
                             onChange={handleDateSelect}
-                            locale="tr-TR"
+                            locale={bcp47Locale[locale] || 'en-US'}
                             minimumDate={new Date(new Date().getFullYear() - 1, 0, 1)}
                             maximumDate={new Date(new Date().getFullYear() + 1, 11, 31)}
                         />
@@ -486,7 +499,14 @@ export default function HomeScreen() {
 
             {/* Global Undo Toast */}
             {showUndo && (
-                <Animated.View style={[styles.undoContainer, { opacity: undoOpacity, backgroundColor: C.cardBg }]}>
+                <Animated.View style={[
+                    styles.undoContainer,
+                    {
+                        opacity: undoOpacity,
+                        backgroundColor: C.cardBg,
+                        bottom: insets.bottom + 110,
+                    }
+                ]}>
                     <Text style={[styles.undoText, { color: C.textLight }]}>{t('app.task_deleted')}</Text>
                     <Pressable onPress={handleGlobalUndo}>
                         <Text style={[styles.undoButton, { color: C.primary }]}>{t('app.undo')}</Text>
@@ -542,7 +562,6 @@ const styles = StyleSheet.create({
     // Global Undo Styles
     undoContainer: {
         position: 'absolute',
-        bottom: 80,
         alignSelf: 'center',
         flexDirection: 'row',
         alignItems: 'center',

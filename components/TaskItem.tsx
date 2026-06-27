@@ -3,9 +3,15 @@ import { useTranslation } from '@/lib/i18n';
 import { Task } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
 
 interface TaskItemProps {
     task: Task;
@@ -29,6 +35,8 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
     const [now, setNow] = useState(Date.now());
 
     const dragProgress = useSharedValue(0);
+    const checkboxScale = useSharedValue(1);
+    const checkboxBrightness = useSharedValue(0);
 
     useEffect(() => {
         dragProgress.value = withTiming(isDragging ? 1 : 0, {
@@ -48,23 +56,44 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
         opacity: 1 - dragProgress.value * 0.1,
     }));
 
+    const checkboxAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: checkboxScale.value }],
+        opacity: 0.7 + checkboxBrightness.value * 0.3,
+    }));
+
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 10000);
         return () => clearInterval(interval);
     }, []);
 
+    const handleCheckboxPressIn = () => {
+        checkboxScale.value = withSpring(0.82, { damping: 12, stiffness: 300 });
+        checkboxBrightness.value = withTiming(1, { duration: 100 });
+    };
+
+    const handleCheckboxPressOut = () => {
+        checkboxScale.value = withSpring(1, { damping: 10, stiffness: 200 });
+        checkboxBrightness.value = withTiming(0, { duration: 200 });
+    };
+
     const handleToggle = () => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const isCompleting = task.status === 'pending';
+        if (isCompleting) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } else {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
         onToggle(task.id);
     };
 
     const handleLongPress = (event: any) => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
         const { pageY } = event.nativeEvent;
         onLongPress(task.id, pageY);
     };
 
     const handleTextPress = () => {
+        Haptics.selectionAsync();
         setIsEditing(true);
         setEditText(task.text);
         onEditStart?.(task.id);
@@ -75,6 +104,7 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
         if (trimmedText) {
             onUpdate(task.id, trimmedText);
         } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             onDelete(task.id);
         }
         setIsEditing(false);
@@ -121,17 +151,21 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
                 <Pressable
                     onPress={handleToggle}
                     onLongPress={handleLongPress}
+                    onPressIn={handleCheckboxPressIn}
+                    onPressOut={handleCheckboxPressOut}
                     delayLongPress={500}
-                    hitSlop={12}
+                    hitSlop={16}
                     style={[
                         styles.checkbox,
                         { borderColor: C.textMuted + '50' },
                         task.status === 'completed' && { backgroundColor: C.primary + '33', borderColor: C.primary + '50' }
                     ]}
                 >
-                    {task.status === 'completed' && (
-                        <Ionicons name="checkmark" size={20} color={C.primary} />
-                    )}
+                    <Animated.View style={checkboxAnimatedStyle}>
+                        {task.status === 'completed' && (
+                            <Ionicons name="checkmark" size={20} color={C.primary} />
+                        )}
+                    </Animated.View>
                 </Pressable>
 
                 {/* Task Text */}
@@ -181,7 +215,10 @@ function TaskItem({ task, onToggle, onDelete, onLongPress, onUpdate, onEditStart
                 {/* Drag Handle */}
                 {onDrag && (
                     <Pressable
-                        onPressIn={onDrag}
+                        onPressIn={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            onDrag();
+                        }}
                         style={styles.dragHandle}
                     >
                         <Ionicons name="menu" size={20} color={isDragging ? C.primary : C.textMuted + '60'} />
